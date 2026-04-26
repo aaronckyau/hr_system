@@ -4,24 +4,52 @@
 
 :root {
   color-scheme: light;
+  --surface: 248 250 247;
+  --ink: 22 31 38;
+  --muted: 94 111 121;
+  --line: 218 226 224;
+  --brand: 12 111 101;
+  --brand-strong: 8 89 82;
+  --accent: 204 132 61;
 }
 
 body {
-  @apply bg-mist text-ink;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  @apply text-ink antialiased;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 8%, rgb(226 244 238 / 0.95), transparent 34rem),
+    radial-gradient(circle at 92% 16%, rgb(244 223 191 / 0.58), transparent 30rem),
+    linear-gradient(135deg, rgb(var(--surface)), rgb(236 242 240));
+  font-family: "Aptos", "Noto Sans TC", "Microsoft JhengHei", ui-sans-serif, system-ui, sans-serif;
 }
 
 a {
-  @apply text-brand;
+  @apply text-brand no-underline;
 }
 
 input,
 select,
 textarea {
-  @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20;
+  @apply w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/10;
+}
+
+input[type="checkbox"] {
+  @apply w-auto rounded border-slate-300 p-0 text-brand shadow-none focus:ring-brand/20;
 }
 
 button {
-  @apply rounded-lg px-4 py-2 text-sm font-medium transition;
+  @apply min-h-11 rounded-2xl px-4 py-2.5 text-sm font-semibold transition;
 }
 
+textarea {
+  min-height: 112px;
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+::selection {
+  background: rgb(var(--brand) / 0.16);
+}

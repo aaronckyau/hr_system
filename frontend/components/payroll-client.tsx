@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 
 import { apiFetch, downloadFile } from "@/lib/api";
 import type { Employee, FinalPayRecord, PayrollConfig, PayrollDetail, PayrollRecord } from "@/lib/types";
+import { Button } from "@/components/ui";
 
 function formatCurrency(amount: number) {
   return `HK$${amount.toFixed(2)}`;
@@ -289,27 +290,28 @@ export function PayrollClient() {
       </section>
 
       {selectedPayroll ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4" onClick={() => setSelectedPayroll(null)}>
-          <div className="w-full max-w-5xl rounded-3xl bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-start justify-between gap-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-sm" onClick={() => setSelectedPayroll(null)}>
+          <aside className="absolute bottom-0 right-0 h-[94dvh] w-full overflow-y-auto rounded-t-[2rem] bg-[#fbfcf8] p-4 shadow-[-24px_0_80px_rgb(15_23_42/0.18)] md:top-0 md:h-full md:max-w-6xl md:rounded-none md:p-6" onClick={(event) => event.stopPropagation()}>
+            <div className="sticky top-0 z-10 -mx-4 -mt-4 flex flex-col gap-4 border-b border-slate-200 bg-[#fbfcf8]/95 px-4 py-4 backdrop-blur sm:flex-row sm:items-start sm:justify-between md:-mx-6 md:-mt-6 md:px-6 md:py-5">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand">薪資明細</div>
-                <h2 className="mt-2 text-2xl font-semibold">{selectedPayroll.employee_name}</h2>
+                <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950 md:text-3xl">{selectedPayroll.employee_name}</h2>
                 <div className="mt-1 text-sm text-slate-500">
                   {selectedPayroll.department} / {selectedPayroll.job_title} / {selectedPayroll.payroll_month}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  className="bg-slate-900 text-white"
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                <Button
+                  className="w-full sm:w-auto"
+                  variant="secondary"
                   onClick={() => downloadFile(`/reports/payslip/${selectedPayroll.id}`, `薪資單-${selectedPayroll.employee_name}-${selectedPayroll.payroll_month}.html`)}
                   type="button"
                 >
                   下載薪資單
-                </button>
-                <button className="bg-slate-100 text-slate-700" onClick={() => setSelectedPayroll(null)} type="button">
+                </Button>
+                <Button className="w-full sm:w-auto" variant="ghost" onClick={() => setSelectedPayroll(null)} type="button">
                   關閉
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -344,9 +346,9 @@ export function PayrollClient() {
                 <div className="space-y-3 px-4 py-4 text-sm">
                   {selectedPayroll.earnings_breakdown.map((item, index) => (
                     <div key={`${item.source}-${item.id ?? index}`} className="rounded-xl bg-slate-50 p-3">
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                         <span className="font-medium text-slate-700">{item.description}</span>
-                        <span>{formatCurrency(item.amount)}</span>
+                        <span className="font-semibold">{formatCurrency(item.amount)}</span>
                       </div>
                       <div className="mt-1 text-slate-500">
                         {(earningTypeLabels[item.earning_type] ?? item.earning_type)} / {item.is_taxable ? "應課稅" : "非應課稅"} / {item.counts_for_mpf ? "納入 MPF" : "不納入 MPF"}
@@ -364,9 +366,9 @@ export function PayrollClient() {
                   ) : (
                     selectedPayroll.deductions_breakdown.map((item, index) => (
                       <div key={`${item.source}-${item.id ?? index}`} className="rounded-xl bg-slate-50 p-3">
-                        <div className="flex items-center justify-between gap-3">
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                           <span className="font-medium text-slate-700">{deductionTypeLabels[item.deduction_type] ?? item.deduction_type}</span>
-                          <span>{formatCurrency(item.amount)}</span>
+                          <span className="font-semibold">{formatCurrency(item.amount)}</span>
                         </div>
                         <div className="mt-1 text-slate-500">{item.reason}</div>
                         <div className="mt-1 text-xs uppercase tracking-[0.15em] text-slate-400">{sourceLabels[item.source] ?? item.source}</div>
@@ -398,7 +400,7 @@ export function PayrollClient() {
                 </div>
               </div>
             </div>
-          </div>
+          </aside>
         </div>
       ) : null}
     </div>
