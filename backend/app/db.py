@@ -20,6 +20,8 @@ def _ensure_column(cursor: sqlite3.Cursor, table: str, column: str, ddl: str) ->
 
 
 def create_db_and_tables() -> None:
+    if DATABASE_URL.startswith("sqlite:///"):
+        _sqlite_db_path().parent.mkdir(parents=True, exist_ok=True)
     SQLModel.metadata.create_all(engine)
     if DATABASE_URL.startswith("sqlite:///"):
         connection = sqlite3.connect(_sqlite_db_path())

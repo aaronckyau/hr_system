@@ -23,7 +23,7 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (submissionError) {
       if (submissionError instanceof TypeError || (submissionError instanceof Error && submissionError.message === "Failed to fetch")) {
-        setError("無法連線到後端服務，請確認 FastAPI 已在 8000 port 啟動。");
+        setError("無法連線到後端服務，請確認 API 服務已正常啟動。");
         return;
       }
       setError(submissionError instanceof Error ? submissionError.message : "登入失敗");

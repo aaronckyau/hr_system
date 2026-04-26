@@ -1,0 +1,27 @@
+services:
+  hr-backend:
+    build:
+      context: ./backend
+    container_name: hr_backend
+    environment:
+      HR_DATABASE_PATH: /data/hr_mvp.db
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://www.4mstrategy.com,https://4mstrategy.com}
+    volumes:
+      - ./data:/data
+    ports:
+      - "127.0.0.1:5301:8000"
+    restart: always
+
+  hr-frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/hr-api/api}
+        NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-/hr}
+    container_name: hr_frontend
+    ports:
+      - "127.0.0.1:5300:3000"
+    depends_on:
+      - hr-backend
+    restart: always
