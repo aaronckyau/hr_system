@@ -39,6 +39,23 @@ DEFAULT_SETTING_OPTIONS: dict[SettingCategory, list[tuple[str, str]]] = {
         ("Standard Chartered", "渣打"),
         ("DBS", "星展"),
     ],
+    SettingCategory.leave_type: [
+        ("annual", "年假"),
+        ("sick", "病假"),
+        ("unpaid", "無薪假"),
+        ("other", "其他"),
+    ],
+    SettingCategory.earning_type: [
+        ("commission", "佣金"),
+        ("bonus", "花紅"),
+        ("reimbursement", "報銷"),
+        ("other", "其他收入"),
+    ],
+    SettingCategory.deduction_type: [
+        ("absence", "缺勤"),
+        ("late", "遲到"),
+        ("other", "其他扣款"),
+    ],
 }
 
 

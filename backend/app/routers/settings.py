@@ -3,13 +3,19 @@ from sqlmodel import Session, select
 
 from app.core.security import get_current_user, require_roles
 from app.db import get_session
-from app.models import AuditEvent, SettingCategory, SettingOption, User, UserRole
+from app.models import AuditEvent, DeductionType, EarningType, LeaveType, SettingCategory, SettingOption, User, UserRole
 from app.schemas import SettingOptionCreate, SettingOptionRead
 from app.services.audit import write_audit_log
 from app.services.settings import upsert_setting_option
 
 
 router = APIRouter(prefix="/settings", tags=["settings"])
+
+RESTRICTED_CATEGORY_VALUES: dict[SettingCategory, set[str]] = {
+    SettingCategory.leave_type: {item.value for item in LeaveType},
+    SettingCategory.earning_type: {item.value for item in EarningType},
+    SettingCategory.deduction_type: {item.value for item in DeductionType if item != DeductionType.unpaid_leave},
+}
 
 
 def to_setting_option_read(option: SettingOption) -> SettingOptionRead:
@@ -49,6 +55,9 @@ def save_setting_option(
         raise HTTPException(status_code=400, detail="選項值不可留空")
     if not payload.label.strip():
         raise HTTPException(status_code=400, detail="顯示名稱不可留空")
+    allowed_values = RESTRICTED_CATEGORY_VALUES.get(payload.category)
+    if allowed_values is not None and payload.value.strip() not in allowed_values:
+        raise HTTPException(status_code=400, detail="此類別只可維護系統已支援的選項值")
 
     option = upsert_setting_option(
         session=session,

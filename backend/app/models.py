@@ -49,6 +49,9 @@ class SettingCategory(str, Enum):
     work_location = "work_location"
     employment_type = "employment_type"
     bank = "bank"
+    leave_type = "leave_type"
+    earning_type = "earning_type"
+    deduction_type = "deduction_type"
 
 
 class AuditEvent(str, Enum):

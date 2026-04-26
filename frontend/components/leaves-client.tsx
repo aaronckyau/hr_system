@@ -3,14 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
-import type { Employee, LeaveConfig, LeaveRequest, PublicHoliday, User } from "@/lib/types";
-
-const leaveTypeLabels: Record<string, string> = {
-  annual: "年假",
-  sick: "病假",
-  unpaid: "無薪假",
-  other: "其他",
-};
+import type { Employee, LeaveConfig, LeaveRequest, PublicHoliday, SettingOption, User } from "@/lib/types";
 
 const statusLabels: Record<string, string> = {
   pending: "待批",
@@ -30,6 +23,7 @@ export function LeavesClient() {
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [leaveConfig, setLeaveConfig] = useState<LeaveConfig>({ saturday_is_workday: false });
   const [publicHolidays, setPublicHolidays] = useState<PublicHoliday[]>([]);
+  const [settingOptions, setSettingOptions] = useState<SettingOption[]>([]);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
     employee_id: "",
@@ -48,18 +42,24 @@ export function LeavesClient() {
   const canManageRules = currentUser?.role === "admin" || currentUser?.role === "hr";
 
   async function loadData() {
-    const [meData, employeeData, leaveData, configData, holidayData] = await Promise.all([
+    const [meData, employeeData, leaveData, configData, holidayData, settingData] = await Promise.all([
       apiFetch<User>("/auth/me"),
       apiFetch<Employee[]>("/employees"),
       apiFetch<LeaveRequest[]>("/leaves"),
       apiFetch<LeaveConfig>("/leaves/config"),
       apiFetch<PublicHoliday[]>("/leaves/public-holidays?year=2026"),
+      apiFetch<SettingOption[]>("/settings/options?category=leave_type"),
     ]);
     setCurrentUser(meData);
     setEmployees(employeeData);
     setLeaves(leaveData);
     setLeaveConfig(configData);
     setPublicHolidays(holidayData);
+    setSettingOptions(settingData);
+  }
+
+  function labelFor(category: string, value: string) {
+    return settingOptions.find((option) => option.category === category && option.value === value)?.label ?? value;
   }
 
   useEffect(() => {
@@ -164,9 +164,9 @@ export function LeavesClient() {
           <div>
             <label className="mb-1 block text-sm font-medium">請假類型</label>
             <select value={form.leave_type} onChange={(event) => setForm((current) => ({ ...current, leave_type: event.target.value }))}>
-              {Object.entries(leaveTypeLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
+              {settingOptions.map((option) => (
+                <option key={option.id} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>
@@ -269,7 +269,7 @@ export function LeavesClient() {
               <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
                 <div>
                   <div className="font-medium">
-                    {leave.employee_name} / {leaveTypeLabels[leave.leave_type] ?? leave.leave_type}
+                    {leave.employee_name} / {labelFor("leave_type", leave.leave_type)}
                     {leave.is_half_day ? " / 半日假" : ""}
                   </div>
                   <div className="text-sm text-slate-500">

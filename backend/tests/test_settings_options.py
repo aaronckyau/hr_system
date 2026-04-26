@@ -126,6 +126,33 @@ class SettingsOptionsTestCase(unittest.TestCase):
         self.assertIn("HSBC", values)
         self.assertIn("BOC Hong Kong", values)
 
+    def test_default_payroll_and_leave_type_options_are_seeded(self):
+        headers = self.auth_headers("admin@example.com")
+
+        leave_response = self.client.get("/api/settings/options?category=leave_type", headers=headers)
+        earning_response = self.client.get("/api/settings/options?category=earning_type", headers=headers)
+        deduction_response = self.client.get("/api/settings/options?category=deduction_type", headers=headers)
+
+        self.assertEqual(leave_response.status_code, 200)
+        self.assertEqual(earning_response.status_code, 200)
+        self.assertEqual(deduction_response.status_code, 200)
+        self.assertIn("annual", {item["value"] for item in leave_response.json()})
+        self.assertIn("commission", {item["value"] for item in earning_response.json()})
+        self.assertIn("late", {item["value"] for item in deduction_response.json()})
+
+    def test_restricted_setting_category_rejects_unsupported_value(self):
+        response = self.client.post(
+            "/api/settings/options",
+            headers=self.auth_headers("admin@example.com"),
+            json={
+                "category": "earning_type",
+                "value": "custom_allowance",
+                "label": "Custom Allowance",
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+
     def test_admin_can_create_employee_with_work_location(self):
         response = self.client.post(
             "/api/employees",

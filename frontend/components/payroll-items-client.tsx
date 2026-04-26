@@ -3,35 +3,15 @@
 import { FormEvent, useEffect, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
-import type { DeductionLine, EarningLine, Employee } from "@/lib/types";
+import type { DeductionLine, EarningLine, Employee, SettingOption } from "@/lib/types";
 
 type ItemTab = "earnings" | "deductions";
 
-const earningTypeOptions: Array<{ value: EarningLine["earning_type"]; label: string; taxable: boolean; mpf: boolean }> = [
-  { value: "commission", label: "佣金", taxable: true, mpf: true },
-  { value: "bonus", label: "花紅", taxable: true, mpf: false },
-  { value: "reimbursement", label: "報銷", taxable: false, mpf: false },
-  { value: "other", label: "其他收入", taxable: true, mpf: false },
-];
-
-const deductionTypeOptions: Array<{ value: DeductionLine["deduction_type"]; label: string }> = [
-  { value: "absence", label: "缺勤" },
-  { value: "late", label: "遲到" },
-  { value: "other", label: "其他扣款" },
-];
-
-const earningTypeLabels: Record<string, string> = {
-  commission: "佣金",
-  bonus: "花紅",
-  reimbursement: "報銷",
-  other: "其他收入",
-};
-
-const deductionTypeLabels: Record<string, string> = {
-  absence: "缺勤",
-  late: "遲到",
-  other: "其他扣款",
-  unpaid_leave: "無薪假",
+const earningTypeDefaults: Record<string, { taxable: boolean; mpf: boolean }> = {
+  commission: { taxable: true, mpf: true },
+  bonus: { taxable: true, mpf: false },
+  reimbursement: { taxable: false, mpf: false },
+  other: { taxable: true, mpf: false },
 };
 
 const sourceLabels: Record<string, string> = {
@@ -48,6 +28,7 @@ export function PayrollItemsClient() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [earnings, setEarnings] = useState<EarningLine[]>([]);
   const [deductions, setDeductions] = useState<DeductionLine[]>([]);
+  const [settingOptions, setSettingOptions] = useState<SettingOption[]>([]);
   const [pageError, setPageError] = useState("");
   const [earningForm, setEarningForm] = useState({
     employee_id: "",
@@ -67,14 +48,16 @@ export function PayrollItemsClient() {
   });
 
   async function loadPageData() {
-    const [employeeData, earningData, deductionData] = await Promise.all([
+    const [employeeData, earningData, deductionData, settingData] = await Promise.all([
       apiFetch<Employee[]>("/employees"),
       apiFetch<EarningLine[]>(`/payroll/earnings?payroll_month=${encodeURIComponent(earningForm.payroll_month)}`),
       apiFetch<DeductionLine[]>(`/payroll/deductions?payroll_month=${encodeURIComponent(deductionForm.payroll_month)}`),
+      apiFetch<SettingOption[]>("/settings/options"),
     ]);
     setEmployees(employeeData);
     setEarnings(earningData);
     setDeductions(deductionData);
+    setSettingOptions(settingData);
   }
 
   useEffect(() => {
@@ -135,6 +118,14 @@ export function PayrollItemsClient() {
     await refreshDeductions(deductionForm.payroll_month);
   }
 
+  function optionsFor(category: string) {
+    return settingOptions.filter((option) => option.category === category && option.is_active);
+  }
+
+  function labelFor(category: string, value: string) {
+    return settingOptions.find((option) => option.category === category && option.value === value)?.label ?? value;
+  }
+
   return (
     <div className="space-y-6">
       <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
@@ -193,17 +184,17 @@ export function PayrollItemsClient() {
                 <select
                   value={earningForm.earning_type}
                   onChange={(event) => {
-                    const option = earningTypeOptions.find((item) => item.value === event.target.value)!;
+                    const defaults = earningTypeDefaults[event.target.value] ?? { taxable: true, mpf: false };
                     setEarningForm((current) => ({
                       ...current,
-                      earning_type: option.value,
-                      is_taxable: option.taxable,
-                      counts_for_mpf: option.mpf,
+                      earning_type: event.target.value as EarningLine["earning_type"],
+                      is_taxable: defaults.taxable,
+                      counts_for_mpf: defaults.mpf,
                     }));
                   }}
                 >
-                  {earningTypeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
+                  {optionsFor("earning_type").map((option) => (
+                    <option key={option.id} value={option.value}>
                       {option.label}
                     </option>
                   ))}
@@ -263,7 +254,7 @@ export function PayrollItemsClient() {
                     return (
                       <tr key={`${item.id ?? index}-${item.employee_id}`} className="border-b border-slate-100">
                         <td className="py-3">{employee?.full_name ?? `#${item.employee_id}`}</td>
-                        <td>{earningTypeLabels[item.earning_type] ?? item.earning_type}</td>
+                        <td>{labelFor("earning_type", item.earning_type)}</td>
                         <td>{formatCurrency(item.amount)}</td>
                         <td>{item.is_taxable ? "應課稅" : "非應課稅"}</td>
                         <td>{item.counts_for_mpf ? "納入" : "不納入"}</td>
@@ -308,8 +299,8 @@ export function PayrollItemsClient() {
               <div>
                 <label className="mb-1 block text-sm font-medium">扣款類型</label>
                 <select value={deductionForm.deduction_type} onChange={(event) => setDeductionForm((current) => ({ ...current, deduction_type: event.target.value as DeductionLine["deduction_type"] }))}>
-                  {deductionTypeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
+                  {optionsFor("deduction_type").map((option) => (
+                    <option key={option.id} value={option.value}>
                       {option.label}
                     </option>
                   ))}
@@ -353,7 +344,7 @@ export function PayrollItemsClient() {
                     return (
                       <tr key={`${item.id ?? index}-${item.employee_id}`} className="border-b border-slate-100">
                         <td className="py-3">{employee?.full_name ?? `#${item.employee_id}`}</td>
-                        <td>{deductionTypeLabels[item.deduction_type] ?? item.deduction_type}</td>
+                        <td>{item.deduction_type === "unpaid_leave" ? "無薪假" : labelFor("deduction_type", item.deduction_type)}</td>
                         <td>{formatCurrency(item.amount)}</td>
                         <td>{sourceLabels[item.source] ?? item.source}</td>
                         <td>{item.reason}</td>

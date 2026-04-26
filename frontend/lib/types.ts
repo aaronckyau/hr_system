@@ -63,7 +63,15 @@ export type PublicHoliday = {
   is_active: boolean;
 };
 
-export type SettingCategory = "department" | "position" | "work_location" | "employment_type" | "bank";
+export type SettingCategory =
+  | "department"
+  | "position"
+  | "work_location"
+  | "employment_type"
+  | "bank"
+  | "leave_type"
+  | "earning_type"
+  | "deduction_type";
 
 export type SettingOption = {
   id: number;

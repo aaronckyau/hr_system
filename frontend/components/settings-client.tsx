@@ -11,9 +11,21 @@ const categoryLabels: Record<SettingCategory, string> = {
   work_location: "工作地點",
   employment_type: "合約類型",
   bank: "銀行",
+  leave_type: "假期類型",
+  earning_type: "收入項目類型",
+  deduction_type: "扣款項目類型",
 };
 
-const categories: SettingCategory[] = ["department", "position", "work_location", "employment_type", "bank"];
+const categories: SettingCategory[] = [
+  "department",
+  "position",
+  "work_location",
+  "employment_type",
+  "bank",
+  "leave_type",
+  "earning_type",
+  "deduction_type",
+];
 
 const initialForm = {
   category: "department" as SettingCategory,
