@@ -8,8 +8,9 @@ from app.core.config import CORS_ORIGINS
 from app.core.security import hash_password
 from app.db import create_db_and_tables, engine
 from app.models import PayrollConfig, User, UserRole
-from app.routers import audit, auth, employees, leaves, payroll, reports
+from app.routers import audit, auth, employees, leaves, payroll, reports, settings
 from app.services.leave import get_leave_config, seed_default_public_holidays
+from app.services.settings import seed_default_setting_options
 
 
 @asynccontextmanager
@@ -42,6 +43,7 @@ async def lifespan(_: FastAPI):
             session.commit()
         get_leave_config(session)
         seed_default_public_holidays(session)
+        seed_default_setting_options(session)
     yield
 
 
@@ -60,6 +62,7 @@ app.include_router(employees.router, prefix="/api")
 app.include_router(leaves.router, prefix="/api")
 app.include_router(payroll.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
+app.include_router(settings.router, prefix="/api")
 
 
 @app.get("/health")

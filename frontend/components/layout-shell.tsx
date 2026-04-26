@@ -5,16 +5,17 @@ import { usePathname, useRouter } from "next/navigation";
 import { PropsWithChildren, useEffect, useState } from "react";
 
 import { apiFetch, clearToken, getToken } from "@/lib/api";
-import type { User } from "@/lib/types";
+import type { User, UserRole } from "@/lib/types";
 
-const navItems = [
+const navItems: Array<{ href: string; label: string; roles?: UserRole[] }> = [
   { href: "/dashboard", label: "總覽" },
-  { href: "/employees", label: "員工" },
+  { href: "/employees", label: "員工", roles: ["admin", "hr"] },
   { href: "/leaves", label: "請假" },
   { href: "/payroll", label: "薪資" },
-  { href: "/payroll-items", label: "薪資項目" },
-  { href: "/audit", label: "稽核紀錄" },
-  { href: "/reports", label: "報表" },
+  { href: "/payroll-items", label: "薪資項目", roles: ["admin", "hr"] },
+  { href: "/settings", label: "公司設定", roles: ["admin", "hr"] },
+  { href: "/audit", label: "稽核紀錄", roles: ["admin", "hr"] },
+  { href: "/reports", label: "報表", roles: ["admin", "hr"] },
 ];
 
 const roleLabels: Record<string, string> = {
@@ -74,7 +75,7 @@ export function LayoutShell({ children }: PropsWithChildren) {
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-6 py-6 lg:grid-cols-[220px_1fr]">
         <aside className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
           <nav className="space-y-2">
-            {navItems.map((item) => {
+            {navItems.filter((item) => !item.roles || item.roles.includes(user.role)).map((item) => {
               const active = pathname === item.href;
               return (
                 <Link

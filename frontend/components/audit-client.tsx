@@ -10,6 +10,7 @@ const eventLabels: Record<string, string> = {
   employee_password_reset: "重設員工密碼",
   leave_config_updated: "更新請假設定",
   public_holiday_saved: "新增或更新公眾假期",
+  setting_option_saved: "儲存公司設定",
   payroll_config_updated: "更新薪資規則",
   earning_created: "新增收入項目",
   deduction_created: "新增扣款項目",

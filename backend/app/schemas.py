@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr
 
-from app.models import AuditEvent, DeductionType, EarningType, LeaveStatus, LeaveType, PayrollStatus, UserRole
+from app.models import AuditEvent, DeductionType, EarningType, LeaveStatus, LeaveType, PayrollStatus, SettingCategory, UserRole
 
 
 class Token(BaseModel):
@@ -52,6 +52,7 @@ class EmployeeCreate(BaseModel):
     employment_start_date: date
     employment_end_date: Optional[date] = None
     employment_type: str = "full_time"
+    work_location: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
     annual_leave_balance: int = 14
@@ -65,6 +66,8 @@ class EmployeeUpdate(BaseModel):
     department: Optional[str] = None
     job_title: Optional[str] = None
     employment_end_date: Optional[date] = None
+    employment_type: Optional[str] = None
+    work_location: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
     annual_leave_balance: Optional[int] = None
@@ -88,6 +91,7 @@ class EmployeeRead(BaseModel):
     employment_start_date: date
     employment_end_date: Optional[date]
     employment_type: str
+    work_location: Optional[str]
     phone: Optional[str]
     address: Optional[str]
     annual_leave_balance: int
@@ -128,6 +132,23 @@ class PublicHolidayRead(BaseModel):
     id: int
     holiday_date: date
     name: str
+    is_active: bool
+
+
+class SettingOptionCreate(BaseModel):
+    category: SettingCategory
+    value: str
+    label: str
+    display_order: int = 0
+    is_active: bool = True
+
+
+class SettingOptionRead(BaseModel):
+    id: int
+    category: SettingCategory
+    value: str
+    label: str
+    display_order: int
     is_active: bool
 
 

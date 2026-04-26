@@ -3,35 +3,12 @@
 import { FormEvent, useEffect, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
-import type { Employee, ResetEmployeePasswordResult, User } from "@/lib/types";
+import type { Employee, ResetEmployeePasswordResult, SettingOption, User } from "@/lib/types";
 
 const roleOptions = [
   { value: "employee", label: "員工" },
   { value: "hr", label: "人事" },
   { value: "admin", label: "管理員" },
-];
-
-const employmentTypeOptions = [
-  { value: "full_time", label: "全職" },
-  { value: "part_time", label: "兼職" },
-  { value: "contract", label: "合約" },
-];
-
-const departmentOptions = [
-  { value: "HR", label: "人事部" },
-  { value: "Finance", label: "財務部" },
-  { value: "Operations", label: "營運部" },
-  { value: "Sales", label: "銷售部" },
-  { value: "IT", label: "資訊科技部" },
-];
-
-const bankOptions = [
-  { value: "", label: "請選擇銀行" },
-  { value: "HSBC", label: "匯豐" },
-  { value: "Hang Seng", label: "恒生" },
-  { value: "BOC Hong Kong", label: "中銀香港" },
-  { value: "Standard Chartered", label: "渣打" },
-  { value: "DBS", label: "星展" },
 ];
 
 const fieldLabels: Record<string, string> = {
@@ -44,7 +21,8 @@ const fieldLabels: Record<string, string> = {
   department: "部門",
   job_title: "職位",
   employment_start_date: "入職日期",
-  employment_type: "僱傭類型",
+  employment_type: "合約類型",
+  work_location: "工作地點",
   phone: "電話",
   address: "地址",
   annual_leave_balance: "年假餘額",
@@ -65,6 +43,7 @@ const initialForm = {
   job_title: "",
   employment_start_date: "",
   employment_type: "full_time",
+  work_location: "",
   phone: "",
   address: "",
   annual_leave_balance: 14,
@@ -74,8 +53,13 @@ const initialForm = {
   bank_account_no: "",
 };
 
+function filterOptions(options: SettingOption[], category: string) {
+  return options.filter((option) => option.category === category && option.is_active);
+}
+
 export function EmployeesClient() {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [settingOptions, setSettingOptions] = useState<SettingOption[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState("");
@@ -88,8 +72,14 @@ export function EmployeesClient() {
     setEmployees(data);
   }
 
+  async function loadSettings() {
+    const data = await apiFetch<SettingOption[]>("/settings/options");
+    setSettingOptions(data);
+  }
+
   useEffect(() => {
     loadEmployees();
+    loadSettings();
     apiFetch<User>("/auth/me").then(setCurrentUser).catch(() => null);
   }, []);
 
@@ -128,6 +118,20 @@ export function EmployeesClient() {
     }
   }
 
+  function renderSettingSelect(key: keyof typeof initialForm, category: string, placeholder: string, value: string | number) {
+    const options = filterOptions(settingOptions, category);
+    return (
+      <select value={String(value)} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}>
+        <option value="">{placeholder}</option>
+        {options.map((option) => (
+          <option key={option.id} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
   const canResetPassword = currentUser?.role === "admin" || currentUser?.role === "hr";
 
   return (
@@ -162,7 +166,7 @@ export function EmployeesClient() {
 
       <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
         <h1 className="text-xl font-semibold">員工資料管理</h1>
-        <p className="mt-2 text-sm text-slate-500">系統會自動產生員工初始密碼，此頁不會顯示或輸入密碼。</p>
+        <p className="mt-2 text-sm text-slate-500">部門、職位、工作地點及合約類型來自「公司設定」，HR/Admin 可自行維護。</p>
         <form className="mt-4 grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
           {Object.entries(form).map(([key, value]) => (
             <div key={key} className={key === "address" ? "md:col-span-2" : ""}>
@@ -176,30 +180,15 @@ export function EmployeesClient() {
                   ))}
                 </select>
               ) : key === "employment_type" ? (
-                <select value={value} onChange={(event) => setForm((current) => ({ ...current, employment_type: event.target.value }))}>
-                  {employmentTypeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                renderSettingSelect("employment_type", "employment_type", "請選擇合約類型", value)
               ) : key === "department" ? (
-                <select value={value} onChange={(event) => setForm((current) => ({ ...current, department: event.target.value }))}>
-                  <option value="">請選擇部門</option>
-                  {departmentOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                renderSettingSelect("department", "department", "請選擇部門", value)
+              ) : key === "job_title" ? (
+                renderSettingSelect("job_title", "position", "請選擇職位", value)
+              ) : key === "work_location" ? (
+                renderSettingSelect("work_location", "work_location", "請選擇工作地點", value)
               ) : key === "bank_name" ? (
-                <select value={value} onChange={(event) => setForm((current) => ({ ...current, bank_name: event.target.value }))}>
-                  {bankOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                renderSettingSelect("bank_name", "bank", "請選擇銀行", value)
               ) : (
                 <input
                   type={["base_salary", "allowances", "annual_leave_balance"].includes(key) ? "number" : key.includes("date") ? "date" : "text"}
@@ -228,6 +217,7 @@ export function EmployeesClient() {
                 <th className="py-2">員工編號</th>
                 <th className="py-2">部門</th>
                 <th className="py-2">職位</th>
+                <th className="py-2">工作地點</th>
                 <th className="py-2">月薪</th>
                 {canResetPassword ? <th className="py-2">操作</th> : null}
               </tr>
@@ -239,6 +229,7 @@ export function EmployeesClient() {
                   <td>{employee.employee_no}</td>
                   <td>{employee.department}</td>
                   <td>{employee.job_title}</td>
+                  <td>{employee.work_location || "-"}</td>
                   <td>HK${employee.base_salary.toFixed(2)}</td>
                   {canResetPassword ? (
                     <td>

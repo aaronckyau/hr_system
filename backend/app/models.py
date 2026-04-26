@@ -43,11 +43,20 @@ class EarningType(str, Enum):
     other = "other"
 
 
+class SettingCategory(str, Enum):
+    department = "department"
+    position = "position"
+    work_location = "work_location"
+    employment_type = "employment_type"
+    bank = "bank"
+
+
 class AuditEvent(str, Enum):
     employee_created = "employee_created"
     employee_password_reset = "employee_password_reset"
     leave_config_updated = "leave_config_updated"
     public_holiday_saved = "public_holiday_saved"
+    setting_option_saved = "setting_option_saved"
     payroll_config_updated = "payroll_config_updated"
     earning_created = "earning_created"
     deduction_created = "deduction_created"
@@ -78,6 +87,7 @@ class Employee(SQLModel, table=True):
     employment_start_date: date
     employment_end_date: Optional[date] = None
     employment_type: str = Field(default="full_time")
+    work_location: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
     annual_leave_balance: int = Field(default=14)
@@ -118,6 +128,17 @@ class PublicHoliday(SQLModel, table=True):
     name: str
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+
+class SettingOption(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    category: SettingCategory = Field(index=True)
+    value: str = Field(index=True)
+    label: str
+    display_order: int = Field(default=0)
+    is_active: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    updated_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
 
 
 class PayrollRecord(SQLModel, table=True):

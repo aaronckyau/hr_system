@@ -27,6 +27,7 @@ export type Employee = {
   employment_start_date: string;
   employment_end_date?: string | null;
   employment_type: string;
+  work_location?: string | null;
   phone?: string | null;
   address?: string | null;
   annual_leave_balance: number;
@@ -59,6 +60,17 @@ export type PublicHoliday = {
   id: number;
   holiday_date: string;
   name: string;
+  is_active: boolean;
+};
+
+export type SettingCategory = "department" | "position" | "work_location" | "employment_type" | "bank";
+
+export type SettingOption = {
+  id: number;
+  category: SettingCategory;
+  value: string;
+  label: string;
+  display_order: number;
   is_active: boolean;
 };
 
