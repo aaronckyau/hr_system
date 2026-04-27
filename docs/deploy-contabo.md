@@ -96,3 +96,45 @@ cd ~/apps/hr_system
 git pull --ff-only origin main
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
 ```
+
+## Alembic migrations
+
+Production schema changes should be managed by Alembic.
+
+For an existing database that was already created before Alembic was added, stamp it once:
+
+```bash
+cd ~/apps/hr_system
+docker compose --env-file .env.production -f docker-compose.prod.yml exec hr-backend alembic -c alembic.ini stamp head
+```
+
+For future schema updates:
+
+```bash
+cd ~/apps/hr_system
+docker compose --env-file .env.production -f docker-compose.prod.yml exec hr-backend alembic -c alembic.ini upgrade head
+```
+
+Create a new migration locally from `backend/`:
+
+```bash
+alembic -c alembic.ini revision --autogenerate -m "describe change"
+```
+
+## PostgreSQL backup and restore
+
+Create a production backup:
+
+```bash
+cd ~/apps/hr_system
+bash scripts/hr-postgres-backup.sh
+```
+
+Restore from a backup file:
+
+```bash
+cd ~/apps/hr_system
+CONFIRM_RESTORE=YES bash scripts/hr-postgres-restore.sh backups/hr_system_YYYYMMDDTHHMMSSZ.dump
+```
+
+Backups are written to `~/apps/hr_system/backups/` and are ignored by Git.

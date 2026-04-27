@@ -14,6 +14,7 @@ backend/app/routers/__pycache__/
 backend/app/services/__pycache__/
 backend/hr_mvp.db
 hr_mvp.db
+backups/
 
 frontend/node_modules/
 frontend/.next/
