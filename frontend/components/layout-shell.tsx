@@ -4,12 +4,17 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { PropsWithChildren, useEffect, useState } from "react";
 
+import { Button } from "@/components/ui";
 import { apiFetch, clearToken, getToken } from "@/lib/api";
 import type { User, UserRole } from "@/lib/types";
-import { Button } from "@/components/ui";
 
 const navItems: Array<{ href: string; label: string; description: string; roles?: UserRole[] }> = [
   { href: "/dashboard", label: "總覽", description: "今日重點" },
+  { href: "/me/dashboard", label: "個人", description: "自助服務" },
+  { href: "/manager/dashboard", label: "主管", description: "Team 狀況", roles: ["admin", "hr", "manager"] },
+  { href: "/manager/team", label: "Team", description: "直屬員工", roles: ["admin", "hr", "manager"] },
+  { href: "/manager/approvals", label: "審批", description: "待處理申請", roles: ["admin", "hr", "manager"] },
+  { href: "/manager/team-calendar", label: "日曆", description: "Team Leave", roles: ["admin", "hr", "manager"] },
   { href: "/employees", label: "員工", description: "檔案與薪酬", roles: ["admin", "hr"] },
   { href: "/leaves", label: "請假", description: "申請與審批" },
   { href: "/payroll", label: "薪資", description: "MPF 與糧單" },
@@ -22,6 +27,7 @@ const navItems: Array<{ href: string; label: string; description: string; roles?
 const roleLabels: Record<UserRole, string> = {
   admin: "系統管理員",
   hr: "人事",
+  manager: "主管",
   employee: "員工",
 };
 

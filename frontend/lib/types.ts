@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "hr" | "employee";
+export type UserRole = "admin" | "hr" | "manager" | "employee";
 
 export type User = {
   id: number;
@@ -16,6 +16,7 @@ export type ResetEmployeePasswordResult = {
 export type Employee = {
   id: number;
   user_id?: number | null;
+  manager_user_id?: number | null;
   email: string;
   full_name: string;
   role: UserRole;
@@ -27,6 +28,7 @@ export type Employee = {
   employment_start_date: string;
   employment_end_date?: string | null;
   employment_type: string;
+  employment_status: "active" | "probation" | "terminated" | "suspended";
   work_location?: string | null;
   phone?: string | null;
   address?: string | null;
@@ -71,7 +73,8 @@ export type SettingCategory =
   | "bank"
   | "leave_type"
   | "earning_type"
-  | "deduction_type";
+  | "deduction_type"
+  | "employment_status";
 
 export type SettingOption = {
   id: number;

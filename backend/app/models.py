@@ -12,6 +12,13 @@ class UserRole(str, Enum):
     employee = "employee"
 
 
+class EmploymentStatus(str, Enum):
+    active = "active"
+    probation = "probation"
+    terminated = "terminated"
+    suspended = "suspended"
+
+
 class LeaveType(str, Enum):
     annual = "annual"
     sick = "sick"
@@ -53,6 +60,7 @@ class SettingCategory(str, Enum):
     leave_type = "leave_type"
     earning_type = "earning_type"
     deduction_type = "deduction_type"
+    employment_status = "employment_status"
 
 
 class AuditEvent(str, Enum):
@@ -100,6 +108,7 @@ class Employee(SQLModel, table=True):
     employment_start_date: date
     employment_end_date: Optional[date] = None
     employment_type: str = Field(default="full_time")
+    employment_status: EmploymentStatus = Field(default=EmploymentStatus.active, index=True)
     work_location: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None

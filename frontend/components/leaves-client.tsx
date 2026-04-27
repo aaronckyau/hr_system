@@ -40,6 +40,7 @@ export function LeavesClient() {
   });
 
   const canManageRules = currentUser?.role === "admin" || currentUser?.role === "hr";
+  const canCreateLeaveForOthers = currentUser?.role === "admin" || currentUser?.role === "hr";
 
   async function loadData() {
     const [meData, employeeData, leaveData, configData, holidayData, settingData] = await Promise.all([
@@ -148,7 +149,7 @@ export function LeavesClient() {
         {error ? <div className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div> : null}
 
         <form className="mt-4 grid gap-4 md:grid-cols-2" onSubmit={submitLeave}>
-          {currentUser?.role !== "employee" ? (
+          {canCreateLeaveForOthers ? (
             <div>
               <label className="mb-1 block text-sm font-medium">員工</label>
               <select value={form.employee_id} onChange={(event) => setForm((current) => ({ ...current, employee_id: event.target.value }))}>

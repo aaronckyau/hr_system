@@ -56,6 +56,12 @@ DEFAULT_SETTING_OPTIONS: dict[SettingCategory, list[tuple[str, str]]] = {
         ("late", "遲到"),
         ("other", "其他扣款"),
     ],
+    SettingCategory.employment_status: [
+        ("active", "在職"),
+        ("probation", "試用中"),
+        ("terminated", "離職"),
+        ("suspended", "停職"),
+    ],
 }
 
 

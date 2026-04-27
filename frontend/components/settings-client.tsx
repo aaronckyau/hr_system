@@ -2,15 +2,16 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
+import { Button, Card, PageHeader, SlideOver, StatusPill } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import type { SettingCategory, SettingOption, User } from "@/lib/types";
-import { Button, Card, PageHeader, SlideOver, StatusPill } from "@/components/ui";
 
 const categoryLabels: Record<SettingCategory, string> = {
   department: "部門",
   position: "職位",
   work_location: "工作地點",
   employment_type: "合約類型",
+  employment_status: "員工狀態",
   bank: "銀行",
   leave_type: "假期類型",
   earning_type: "收入項目類型",
@@ -22,13 +23,14 @@ const categories: SettingCategory[] = [
   "position",
   "work_location",
   "employment_type",
+  "employment_status",
   "bank",
   "leave_type",
   "earning_type",
   "deduction_type",
 ];
 
-const restrictedCategories: SettingCategory[] = ["leave_type", "earning_type", "deduction_type"];
+const restrictedCategories: SettingCategory[] = ["leave_type", "earning_type", "deduction_type", "employment_status"];
 
 const initialForm = {
   category: "department" as SettingCategory,
@@ -55,12 +57,8 @@ export function SettingsClient() {
 
   useEffect(() => {
     Promise.all([apiFetch<User>("/auth/me"), loadOptions()])
-      .then(([currentUser]) => {
-        setUser(currentUser);
-      })
-      .catch((fetchError) => {
-        setError(fetchError instanceof Error ? fetchError.message : "無法載入公司設定");
-      });
+      .then(([currentUser]) => setUser(currentUser))
+      .catch((fetchError) => setError(fetchError instanceof Error ? fetchError.message : "無法載入公司設定"));
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -119,31 +117,22 @@ export function SettingsClient() {
       <PageHeader
         eyebrow="Company Settings"
         title="公司設定"
-        description="集中管理 HR 表單使用的下拉選項。部門、職位、銀行、假期及薪資項目名稱都可由 HR/Admin 維護，避免硬編碼。"
-        action={
-          canManage ? (
-            <Button onClick={openCreateDrawer} type="button">
-              新增選項
-            </Button>
-          ) : null
-        }
+        description="HR/Admin 可自行維護部門、職位、工作地點、合約類型、員工狀態，以及假期和薪資項目選項。"
+        action={canManage ? <Button onClick={openCreateDrawer}>新增選項</Button> : null}
       />
 
       {error ? <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700 ring-1 ring-red-100">{error}</div> : null}
       {message ? <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 ring-1 ring-emerald-100">{message}</div> : null}
-      {!canManage && user ? <div className="rounded-2xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 ring-1 ring-amber-100">只有 HR 或系統管理員可以修改公司設定。</div> : null}
 
       <Card className="p-3">
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
           {categories.map((category) => {
             const active = activeCategory === category;
             const count = options.filter((option) => option.category === category).length;
             return (
               <button
                 key={category}
-                className={`rounded-[1.5rem] px-4 py-4 text-left transition ${
-                  active ? "bg-slate-950 text-white shadow-lg shadow-slate-950/15" : "bg-white/70 text-slate-700 ring-1 ring-slate-200 hover:bg-white"
-                }`}
+                className={`rounded-[1.5rem] px-4 py-4 text-left transition ${active ? "bg-slate-950 text-white shadow-lg shadow-slate-950/15" : "bg-white/70 text-slate-700 ring-1 ring-slate-200 hover:bg-white"}`}
                 onClick={() => setActiveCategory(category)}
                 type="button"
               >
@@ -168,72 +157,32 @@ export function SettingsClient() {
           ) : null}
         </div>
 
-        <div className="mt-5 overflow-x-auto">
-          <div className="space-y-3 md:hidden">
-            {visibleOptions.map((option) => (
-              <div key={option.id} className="rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="truncate font-bold text-slate-950">{option.label}</div>
-                    <div className="mt-1 break-all font-mono text-xs text-slate-500">{option.value}</div>
-                  </div>
-                  <StatusPill active={option.is_active} />
-                </div>
-                <div className="mt-4 flex items-center justify-between gap-3">
-                  <div className="text-sm text-slate-500">排序：{option.display_order}</div>
-                  {canManage ? (
-                    <Button className="min-w-24" variant="ghost" onClick={() => openEditDrawer(option)} type="button">
-                      編輯
-                    </Button>
-                  ) : (
-                    <span className="text-sm text-slate-400">只讀</span>
-                  )}
-                </div>
+        <div className="mt-5 space-y-3">
+          {visibleOptions.map((option) => (
+            <div key={option.id} className="grid gap-3 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100 md:grid-cols-[1.5fr_1fr_auto_auto] md:items-center">
+              <div>
+                <div className="font-bold text-slate-950">{option.label}</div>
+                <div className="mt-1 font-mono text-xs text-slate-500">{option.value}</div>
               </div>
-            ))}
-          </div>
-          <table className="hidden min-w-full text-left text-sm md:table">
-            <thead>
-              <tr className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
-                <th className="px-3 py-3">顯示名稱</th>
-                <th className="px-3 py-3">選項值</th>
-                <th className="px-3 py-3">排序</th>
-                <th className="px-3 py-3">狀態</th>
-                <th className="px-3 py-3 text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleOptions.map((option) => (
-                <tr key={option.id} className="group border-t border-slate-100 transition hover:bg-slate-50/80">
-                  <td className="px-3 py-4 font-semibold text-slate-900">{option.label}</td>
-                  <td className="px-3 py-4 font-mono text-xs text-slate-500">{option.value}</td>
-                  <td className="px-3 py-4 text-slate-600">{option.display_order}</td>
-                  <td className="px-3 py-4">
-                    <StatusPill active={option.is_active} />
-                  </td>
-                  <td className="px-3 py-4 text-right">
-                    {canManage ? (
-                      <Button variant="ghost" onClick={() => openEditDrawer(option)} type="button">
-                        編輯
-                      </Button>
-                    ) : (
-                      <span className="text-slate-400">只讀</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {visibleOptions.length === 0 ? (
-            <div className="rounded-2xl bg-slate-50 p-8 text-center text-sm text-slate-500">這個類別暫時未有選項。</div>
-          ) : null}
+              <div className="text-sm text-slate-500">排序：{option.display_order}</div>
+              <StatusPill active={option.is_active} />
+              {canManage ? (
+                <Button variant="ghost" onClick={() => openEditDrawer(option)} type="button">
+                  編輯
+                </Button>
+              ) : (
+                <span className="text-sm text-slate-400">只讀</span>
+              )}
+            </div>
+          ))}
+          {visibleOptions.length === 0 ? <div className="rounded-2xl bg-slate-50 p-8 text-center text-sm text-slate-500">這個類別暫時未有選項。</div> : null}
         </div>
       </Card>
 
       <SlideOver
         open={drawerOpen}
         title={editingId ? "編輯設定選項" : "新增設定選項"}
-        description={categoryIsRestricted ? "此類別已連接計算邏輯，只可維護系統支援的選項值、名稱、排序及狀態。" : "新增後會即時出現在相關 HR 表單。"}
+        description={categoryIsRestricted ? "此類別已連接系統邏輯，只可維護系統支援的選項值、名稱、排序及狀態。" : "新增後會即時出現在相關 HR 表單。"}
         onClose={() => setDrawerOpen(false)}
         footer={
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -263,13 +212,7 @@ export function SettingsClient() {
           </div>
           <div>
             <label className="mb-2 block text-sm font-bold text-slate-700">選項值</label>
-            <input
-              value={form.value}
-              onChange={(event) => setForm((current) => ({ ...current, value: event.target.value }))}
-              placeholder="例如：HR"
-              disabled={Boolean(editingId)}
-            />
-            <p className="mt-2 text-xs leading-5 text-slate-500">選項值會儲存在資料庫。編輯現有項目時不建議更改，避免影響歷史資料。</p>
+            <input value={form.value} onChange={(event) => setForm((current) => ({ ...current, value: event.target.value }))} placeholder="例如：HR" disabled={Boolean(editingId)} />
           </div>
           <div>
             <label className="mb-2 block text-sm font-bold text-slate-700">排序</label>

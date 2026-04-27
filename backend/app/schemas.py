@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel, EmailStr
 
-from app.models import AuditEvent, DeductionType, EarningType, LeaveStatus, LeaveType, PayrollStatus, SettingCategory, UserRole
+from app.models import AuditEvent, DeductionType, EarningType, EmploymentStatus, LeaveStatus, LeaveType, PayrollStatus, SettingCategory, UserRole
 
 
 class Token(BaseModel):
@@ -53,6 +53,7 @@ class EmployeeCreate(BaseModel):
     employment_start_date: date
     employment_end_date: Optional[date] = None
     employment_type: str = "full_time"
+    employment_status: EmploymentStatus = EmploymentStatus.active
     work_location: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
@@ -69,6 +70,7 @@ class EmployeeUpdate(BaseModel):
     job_title: Optional[str] = None
     employment_end_date: Optional[date] = None
     employment_type: Optional[str] = None
+    employment_status: Optional[EmploymentStatus] = None
     work_location: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
@@ -94,6 +96,7 @@ class EmployeeRead(BaseModel):
     employment_start_date: date
     employment_end_date: Optional[date]
     employment_type: str
+    employment_status: EmploymentStatus
     work_location: Optional[str]
     phone: Optional[str]
     address: Optional[str]

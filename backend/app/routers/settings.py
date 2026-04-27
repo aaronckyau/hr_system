@@ -3,7 +3,7 @@ from sqlmodel import Session, select
 
 from app.core.security import get_current_user, require_roles
 from app.db import get_session
-from app.models import AuditEvent, DeductionType, EarningType, LeaveType, SettingCategory, SettingOption, User, UserRole
+from app.models import AuditEvent, DeductionType, EarningType, EmploymentStatus, LeaveType, SettingCategory, SettingOption, User, UserRole
 from app.schemas import SettingOptionCreate, SettingOptionRead
 from app.services.audit import write_audit_log
 from app.services.settings import upsert_setting_option
@@ -15,6 +15,7 @@ RESTRICTED_CATEGORY_VALUES: dict[SettingCategory, set[str]] = {
     SettingCategory.leave_type: {item.value for item in LeaveType},
     SettingCategory.earning_type: {item.value for item in EarningType},
     SettingCategory.deduction_type: {item.value for item in DeductionType if item != DeductionType.unpaid_leave},
+    SettingCategory.employment_status: {item.value for item in EmploymentStatus},
 }
 
 
