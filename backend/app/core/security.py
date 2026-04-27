@@ -32,7 +32,7 @@ def create_access_token(subject: str, expires_delta: Optional[timedelta] = None)
 
 def authenticate_user(session: Session, email: str, password: str) -> Optional[User]:
     user = session.exec(select(User).where(User.email == email)).first()
-    if not user or not verify_password(password, user.password_hash):
+    if not user or not user.is_active or not verify_password(password, user.password_hash):
         return None
     return user
 
@@ -54,6 +54,8 @@ def get_current_user(
     user = session.exec(select(User).where(User.email == email)).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="找不到使用者")
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="帳號已停用")
     return user
 
 

@@ -3,11 +3,12 @@ from sqlmodel import Session, select
 
 from app.core.security import get_current_user, require_roles
 from app.db import get_session
-from app.models import Employee, PayrollRecord, User, UserRole
+from app.models import AuditEvent, Employee, PayrollRecord, User, UserRole
 from app.routers.employees import to_employee_read
 from app.routers.payroll import get_payroll_with_access_check, to_payroll_read
 from app.services.exporters import export_ir56b_csv, export_ir56b_excel, export_payslip_html
 from app.services.payroll import build_payroll_components
+from app.services.audit import write_audit_log
 
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -16,7 +17,7 @@ router = APIRouter(prefix="/reports", tags=["reports"])
 @router.get("/ir56b.csv")
 def download_ir56b_csv(
     session: Session = Depends(get_session),
-    _: User = Depends(require_roles(UserRole.admin, UserRole.hr)),
+    current_user: User = Depends(require_roles(UserRole.admin, UserRole.hr)),
 ):
     employees = session.exec(select(Employee)).all()
     employee_reads = []
@@ -25,11 +26,20 @@ def download_ir56b_csv(
         user = session.get(User, employee.user_id)
         if not user:
             continue
-        employee_reads.append(to_employee_read(employee, user))
+        employee_reads.append(to_employee_read(employee, user, current_user))
         payrolls = session.exec(select(PayrollRecord).where(PayrollRecord.employee_id == employee.id)).all()
         payroll_by_employee[employee.id] = [to_payroll_read(payroll, employee, user) for payroll in payrolls]
 
     content = export_ir56b_csv(employee_reads, payroll_by_employee)
+    write_audit_log(
+        session,
+        actor=current_user,
+        event_type=AuditEvent.report_downloaded,
+        entity_type="report",
+        entity_id=None,
+        summary="下載 IR56B CSV 報表",
+        metadata={"format": "csv", "employee_count": len(employee_reads)},
+    )
     headers = {"Content-Disposition": 'attachment; filename="ir56b-report.csv"'}
     return Response(content=content, media_type="text/csv; charset=utf-8", headers=headers)
 
@@ -37,7 +47,7 @@ def download_ir56b_csv(
 @router.get("/ir56b.xlsx")
 def download_ir56b_excel(
     session: Session = Depends(get_session),
-    _: User = Depends(require_roles(UserRole.admin, UserRole.hr)),
+    current_user: User = Depends(require_roles(UserRole.admin, UserRole.hr)),
 ):
     employees = session.exec(select(Employee)).all()
     employee_reads = []
@@ -46,11 +56,20 @@ def download_ir56b_excel(
         user = session.get(User, employee.user_id)
         if not user:
             continue
-        employee_reads.append(to_employee_read(employee, user))
+        employee_reads.append(to_employee_read(employee, user, current_user))
         payrolls = session.exec(select(PayrollRecord).where(PayrollRecord.employee_id == employee.id)).all()
         payroll_by_employee[employee.id] = [to_payroll_read(payroll, employee, user) for payroll in payrolls]
 
     content = export_ir56b_excel(employee_reads, payroll_by_employee)
+    write_audit_log(
+        session,
+        actor=current_user,
+        event_type=AuditEvent.report_downloaded,
+        entity_type="report",
+        entity_id=None,
+        summary="下載 IR56B Excel 報表",
+        metadata={"format": "xlsx", "employee_count": len(employee_reads)},
+    )
     headers = {"Content-Disposition": 'attachment; filename="ir56b-report.xlsx"'}
     return Response(
         content=content,
@@ -66,7 +85,7 @@ def download_payslip(
     current_user: User = Depends(get_current_user),
 ):
     payroll, employee, user = get_payroll_with_access_check(session, payroll_id, current_user)
-    employee_read = to_employee_read(employee, user)
+    employee_read = to_employee_read(employee, user, current_user)
     payroll_read = to_payroll_read(payroll, employee, user)
     components = build_payroll_components(session, employee, payroll.payroll_month)
 
@@ -127,6 +146,15 @@ def download_payslip(
         earnings_breakdown=earnings_breakdown,
         deductions_breakdown=deductions_breakdown,
         formulas=formulas,
+    )
+    write_audit_log(
+        session,
+        actor=current_user,
+        event_type=AuditEvent.payslip_downloaded,
+        entity_type="payroll",
+        entity_id=payroll.id,
+        summary=f"下載糧單：{user.full_name} / {payroll.payroll_month}",
+        metadata={"employee_id": employee.id, "payroll_month": payroll.payroll_month},
     )
     headers = {"Content-Disposition": f'attachment; filename="payslip-{payroll.payroll_month}-{employee.employee_no}.html"'}
     return Response(content=content, media_type="text/html; charset=utf-8", headers=headers)

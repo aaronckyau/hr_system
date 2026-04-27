@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from app.core.security import get_current_user, require_roles
+from app.core.permissions import ensure_can_view_sensitive_employee_data
 from app.db import get_session
 from app.models import AuditEvent, DeductionItem, Employee, EarningItem, FinalPayRecord, User, UserRole
 from app.schemas import (
@@ -66,9 +67,7 @@ def get_employee_with_access_check(session: Session, employee_id: int, current_u
     employee = session.get(Employee, employee_id)
     if not employee:
         raise HTTPException(status_code=404, detail="找不到員工")
-    if current_user.role == UserRole.employee:
-        if not current_user.employee_profile or current_user.employee_profile.id != employee.id:
-            raise HTTPException(status_code=403, detail="權限不足")
+    ensure_can_view_sensitive_employee_data(current_user, employee)
     return employee
 
 
@@ -136,7 +135,9 @@ def list_payroll(
     from app.models import PayrollRecord
 
     statement = select(PayrollRecord)
-    if current_user.role == UserRole.employee and current_user.employee_profile:
+    if current_user.role not in (UserRole.admin, UserRole.hr):
+        if not current_user.employee_profile:
+            return []
         statement = statement.where(PayrollRecord.employee_id == current_user.employee_profile.id)
 
     payrolls = session.exec(statement.order_by(PayrollRecord.payroll_month.desc())).all()
@@ -146,6 +147,16 @@ def list_payroll(
         user = session.get(User, employee.user_id) if employee else None
         if employee and user:
             results.append(to_payroll_read(payroll, employee, user))
+    if current_user.role in (UserRole.admin, UserRole.hr):
+        write_audit_log(
+            session,
+            actor=current_user,
+            event_type=AuditEvent.payroll_viewed,
+            entity_type="payroll",
+            entity_id=None,
+            summary="查看薪資資料列表",
+            metadata={"record_count": len(results)},
+        )
     return results
 
 
@@ -199,7 +210,7 @@ def read_earnings(
     current_user: User = Depends(get_current_user),
 ):
     statement = select(EarningItem).where(EarningItem.payroll_month == payroll_month)
-    if current_user.role == UserRole.employee:
+    if current_user.role not in (UserRole.admin, UserRole.hr):
         if not current_user.employee_profile:
             return []
         statement = statement.where(EarningItem.employee_id == current_user.employee_profile.id)
@@ -260,7 +271,7 @@ def read_deductions(
     current_user: User = Depends(get_current_user),
 ):
     statement = select(DeductionItem).where(DeductionItem.payroll_month == payroll_month)
-    if current_user.role == UserRole.employee:
+    if current_user.role not in (UserRole.admin, UserRole.hr):
         if not current_user.employee_profile:
             return []
         statement = statement.where(DeductionItem.employee_id == current_user.employee_profile.id)
@@ -317,7 +328,7 @@ def list_final_pay(
     current_user: User = Depends(get_current_user),
 ):
     statement = select(FinalPayRecord)
-    if current_user.role == UserRole.employee:
+    if current_user.role not in (UserRole.admin, UserRole.hr):
         if not current_user.employee_profile:
             return []
         statement = statement.where(FinalPayRecord.employee_id == current_user.employee_profile.id)
@@ -376,6 +387,15 @@ def read_payroll_detail(
     current_user: User = Depends(get_current_user),
 ):
     payroll, employee, user = get_payroll_with_access_check(session, payroll_id, current_user)
+    write_audit_log(
+        session,
+        actor=current_user,
+        event_type=AuditEvent.payroll_viewed,
+        entity_type="payroll",
+        entity_id=payroll.id,
+        summary=f"查看薪資明細：{user.full_name} / {payroll.payroll_month}",
+        metadata={"employee_id": employee.id, "payroll_month": payroll.payroll_month},
+    )
     components = build_payroll_components(session, employee, payroll.payroll_month)
 
     earnings_breakdown = [

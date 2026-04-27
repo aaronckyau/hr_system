@@ -1,4 +1,5 @@
 import unittest
+from datetime import date
 
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine, select
@@ -7,7 +8,7 @@ from sqlmodel.pool import StaticPool
 from app.core.security import hash_password
 from app.db import get_session
 from app.main import app
-from app.models import AuditEvent, AuditLog, SettingCategory, SettingOption, User, UserRole
+from app.models import AuditEvent, AuditLog, Employee, SettingCategory, SettingOption, User, UserRole
 from app.services.settings import seed_default_setting_options
 
 
@@ -42,6 +43,14 @@ class SettingsOptionsTestCase(unittest.TestCase):
                     full_name="Employee User",
                     password_hash=hash_password("password123"),
                     role=UserRole.employee,
+                )
+            )
+            session.add(
+                User(
+                    email="manager@example.com",
+                    full_name="Manager User",
+                    password_hash=hash_password("password123"),
+                    role=UserRole.manager,
                 )
             )
             session.commit()
@@ -176,6 +185,114 @@ class SettingsOptionsTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()["work_location"], "Hong Kong Office")
+
+    def test_manager_sees_only_direct_reports_with_sensitive_fields_masked(self):
+        with Session(self.engine) as session:
+            manager = session.exec(select(User).where(User.email == "manager@example.com")).first()
+            direct_user = User(
+                email="direct@example.com",
+                full_name="Direct Report",
+                password_hash=hash_password("password123"),
+                role=UserRole.employee,
+            )
+            other_user = User(
+                email="other@example.com",
+                full_name="Other Employee",
+                password_hash=hash_password("password123"),
+                role=UserRole.employee,
+            )
+            session.add(direct_user)
+            session.add(other_user)
+            session.commit()
+            session.refresh(direct_user)
+            session.refresh(other_user)
+
+            session.add(
+                Employee(
+                    user_id=direct_user.id,
+                    manager_user_id=manager.id,
+                    employee_no="E901",
+                    hk_id="A123456(7)",
+                    department="HR",
+                    job_title="Officer",
+                    employment_start_date=date(2026, 4, 1),
+                    base_salary=25000,
+                    allowances=1000,
+                    bank_account_no="123456789",
+                )
+            )
+            session.add(
+                Employee(
+                    user_id=other_user.id,
+                    employee_no="E902",
+                    hk_id="B765432(1)",
+                    department="Finance",
+                    job_title="Analyst",
+                    employment_start_date=date(2026, 4, 1),
+                    base_salary=30000,
+                    allowances=0,
+                    bank_account_no="987654321",
+                )
+            )
+            session.commit()
+
+        response = self.client.get("/api/employees", headers=self.auth_headers("manager@example.com"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0]["employee_no"], "E901")
+        self.assertEqual(payload[0]["hk_id"], "A123******")
+        self.assertEqual(payload[0]["base_salary"], 0)
+        self.assertEqual(payload[0]["bank_account_no"], "*****6789")
+
+    def test_employee_only_sees_own_employee_record(self):
+        with Session(self.engine) as session:
+            employee_user = session.exec(select(User).where(User.email == "employee@example.com")).first()
+            other_user = User(
+                email="hidden@example.com",
+                full_name="Hidden Employee",
+                password_hash=hash_password("password123"),
+                role=UserRole.employee,
+            )
+            session.add(other_user)
+            session.commit()
+            session.refresh(other_user)
+
+            session.add(
+                Employee(
+                    user_id=employee_user.id,
+                    employee_no="E903",
+                    hk_id="C123456(7)",
+                    department="HR",
+                    job_title="Officer",
+                    employment_start_date=date(2026, 4, 1),
+                    base_salary=20000,
+                    bank_account_no="11112222",
+                )
+            )
+            session.add(
+                Employee(
+                    user_id=other_user.id,
+                    employee_no="E904",
+                    hk_id="D123456(7)",
+                    department="Finance",
+                    job_title="Analyst",
+                    employment_start_date=date(2026, 4, 1),
+                    base_salary=30000,
+                    bank_account_no="33334444",
+                )
+            )
+            session.commit()
+
+        response = self.client.get("/api/employees", headers=self.auth_headers("employee@example.com"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0]["employee_no"], "E903")
+        self.assertEqual(payload[0]["hk_id"], "C123456(7)")
+        self.assertEqual(payload[0]["base_salary"], 20000)
 
 
 if __name__ == "__main__":

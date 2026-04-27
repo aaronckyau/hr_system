@@ -8,6 +8,7 @@ from sqlmodel import Field, Relationship, SQLModel
 class UserRole(str, Enum):
     admin = "admin"
     hr = "hr"
+    manager = "manager"
     employee = "employee"
 
 
@@ -56,6 +57,7 @@ class SettingCategory(str, Enum):
 
 class AuditEvent(str, Enum):
     employee_created = "employee_created"
+    employee_updated = "employee_updated"
     employee_password_reset = "employee_password_reset"
     leave_config_updated = "leave_config_updated"
     public_holiday_saved = "public_holiday_saved"
@@ -65,6 +67,10 @@ class AuditEvent(str, Enum):
     deduction_created = "deduction_created"
     payroll_generated = "payroll_generated"
     final_pay_created = "final_pay_created"
+    sensitive_employee_viewed = "sensitive_employee_viewed"
+    payroll_viewed = "payroll_viewed"
+    report_downloaded = "report_downloaded"
+    payslip_downloaded = "payslip_downloaded"
 
 
 class User(SQLModel, table=True):
@@ -76,12 +82,16 @@ class User(SQLModel, table=True):
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
 
-    employee_profile: Optional["Employee"] = Relationship(back_populates="user")
+    employee_profile: Optional["Employee"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"foreign_keys": "Employee.user_id"},
+    )
 
 
 class Employee(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: Optional[int] = Field(default=None, foreign_key="user.id", unique=True)
+    manager_user_id: Optional[int] = Field(default=None, foreign_key="user.id", index=True)
     employee_no: str = Field(index=True, unique=True)
     hk_id: str
     tax_file_no: Optional[str] = None
@@ -100,7 +110,10 @@ class Employee(SQLModel, table=True):
     bank_account_no: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
 
-    user: Optional[User] = Relationship(back_populates="employee_profile")
+    user: Optional[User] = Relationship(
+        back_populates="employee_profile",
+        sa_relationship_kwargs={"foreign_keys": "Employee.user_id"},
+    )
 
 
 class LeaveRequest(SQLModel, table=True):

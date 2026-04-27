@@ -4,6 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from app.core.security import get_current_user, hash_password, require_roles
+from app.core.permissions import (
+    can_view_all_employees,
+    can_view_sensitive_employee_data,
+    filter_employee_statement_by_access,
+    mask_bank_account,
+    mask_hkid,
+)
 from app.db import get_session
 from app.models import AuditEvent, Employee, User, UserRole
 from app.schemas import EmployeeCreate, EmployeeRead, EmployeeUpdate
@@ -17,16 +24,18 @@ def generate_initial_password() -> str:
     return secrets.token_urlsafe(9)
 
 
-def to_employee_read(employee: Employee, user: User) -> EmployeeRead:
+def to_employee_read(employee: Employee, user: User, viewer: User | None = None) -> EmployeeRead:
+    show_sensitive = True if viewer is None else can_view_sensitive_employee_data(viewer, employee)
     return EmployeeRead(
         id=employee.id,
         user_id=employee.user_id,
         email=user.email,
         full_name=user.full_name,
         role=user.role,
+        manager_user_id=employee.manager_user_id,
         employee_no=employee.employee_no,
-        hk_id=employee.hk_id,
-        tax_file_no=employee.tax_file_no,
+        hk_id=employee.hk_id if show_sensitive else mask_hkid(employee.hk_id),
+        tax_file_no=employee.tax_file_no if show_sensitive else None,
         department=employee.department,
         job_title=employee.job_title,
         employment_start_date=employee.employment_start_date,
@@ -34,12 +43,12 @@ def to_employee_read(employee: Employee, user: User) -> EmployeeRead:
         employment_type=employee.employment_type,
         work_location=employee.work_location,
         phone=employee.phone,
-        address=employee.address,
+        address=employee.address if show_sensitive else None,
         annual_leave_balance=employee.annual_leave_balance,
-        base_salary=employee.base_salary,
-        allowances=employee.allowances,
-        bank_name=employee.bank_name,
-        bank_account_no=employee.bank_account_no,
+        base_salary=employee.base_salary if show_sensitive else 0,
+        allowances=employee.allowances if show_sensitive else 0,
+        bank_name=employee.bank_name if show_sensitive else None,
+        bank_account_no=employee.bank_account_no if show_sensitive else mask_bank_account(employee.bank_account_no),
     )
 
 
@@ -48,15 +57,24 @@ def list_employees(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role == UserRole.employee and current_user.employee_profile:
-        return [to_employee_read(current_user.employee_profile, current_user)]
-
-    employees = session.exec(select(Employee)).all()
+    statement = filter_employee_statement_by_access(select(Employee), current_user)
+    employees = session.exec(statement).all()
     results = []
     for employee in employees:
         user = session.get(User, employee.user_id)
         if user:
-            results.append(to_employee_read(employee, user))
+            results.append(to_employee_read(employee, user, current_user))
+
+    if can_view_all_employees(current_user):
+        write_audit_log(
+            session,
+            actor=current_user,
+            event_type=AuditEvent.sensitive_employee_viewed,
+            entity_type="employee",
+            entity_id=None,
+            summary="查看員工敏感資料列表",
+            metadata={"record_count": len(results)},
+        )
     return results
 
 
@@ -83,6 +101,7 @@ def create_employee(
 
     employee = Employee(
         user_id=user.id,
+        manager_user_id=payload.manager_user_id,
         employee_no=payload.employee_no,
         hk_id=payload.hk_id,
         tax_file_no=payload.tax_file_no,
@@ -116,7 +135,7 @@ def create_employee(
             "job_title": employee.job_title,
         },
     )
-    return to_employee_read(employee, user)
+    return to_employee_read(employee, user, current_user)
 
 
 @router.patch("/{employee_id}", response_model=EmployeeRead)
@@ -124,7 +143,7 @@ def update_employee(
     employee_id: int,
     payload: EmployeeUpdate,
     session: Session = Depends(get_session),
-    _: User = Depends(require_roles(UserRole.admin, UserRole.hr)),
+    current_user: User = Depends(require_roles(UserRole.admin, UserRole.hr)),
 ):
     employee = session.get(Employee, employee_id)
     if not employee:
@@ -140,4 +159,13 @@ def update_employee(
     user = session.get(User, employee.user_id)
     if not user:
         raise HTTPException(status_code=404, detail="找不到員工帳號")
-    return to_employee_read(employee, user)
+    write_audit_log(
+        session,
+        actor=current_user,
+        event_type=AuditEvent.employee_updated,
+        entity_type="employee",
+        entity_id=employee.id,
+        summary=f"更新員工資料：{user.full_name} ({employee.employee_no})",
+        metadata={"updated_fields": sorted(updates.keys())},
+    )
+    return to_employee_read(employee, user, current_user)

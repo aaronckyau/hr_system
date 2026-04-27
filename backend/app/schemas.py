@@ -44,6 +44,7 @@ class EmployeeCreate(BaseModel):
     email: EmailStr
     full_name: str
     role: UserRole = UserRole.employee
+    manager_user_id: Optional[int] = None
     employee_no: str
     hk_id: str
     tax_file_no: Optional[str] = None
@@ -63,6 +64,7 @@ class EmployeeCreate(BaseModel):
 
 
 class EmployeeUpdate(BaseModel):
+    manager_user_id: Optional[int] = None
     department: Optional[str] = None
     job_title: Optional[str] = None
     employment_end_date: Optional[date] = None
@@ -83,6 +85,7 @@ class EmployeeRead(BaseModel):
     email: EmailStr
     full_name: str
     role: UserRole
+    manager_user_id: Optional[int]
     employee_no: str
     hk_id: str
     tax_file_no: Optional[str]

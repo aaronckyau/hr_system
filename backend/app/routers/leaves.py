@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
 from app.core.security import get_current_user, require_roles
+from app.core.permissions import can_view_all_employees, filter_employee_statement_by_access
 from app.db import get_session
 from app.models import AuditEvent, Employee, LeaveRequest, PublicHoliday, User, UserRole
 from app.schemas import LeaveApprove, LeaveConfigRead, LeaveConfigUpdate, LeaveCreate, LeaveRead, PublicHolidayCreate, PublicHolidayRead
@@ -51,10 +52,14 @@ def list_leaves(
     current_user: User = Depends(get_current_user),
 ):
     statement = select(LeaveRequest)
-    if current_user.role == UserRole.employee:
+    if not can_view_all_employees(current_user):
         if not current_user.employee_profile:
             return []
-        statement = statement.where(LeaveRequest.employee_id == current_user.employee_profile.id)
+        visible_employees = session.exec(filter_employee_statement_by_access(select(Employee), current_user)).all()
+        visible_employee_ids = [employee.id for employee in visible_employees if employee.id is not None]
+        if not visible_employee_ids:
+            return []
+        statement = statement.where(LeaveRequest.employee_id.in_(visible_employee_ids))
 
     leave_requests = session.exec(statement.order_by(LeaveRequest.start_date.desc())).all()
     results = []
@@ -156,6 +161,8 @@ def create_leave(
         if not current_user.employee_profile:
             raise HTTPException(status_code=400, detail="缺少員工資料")
         employee_id = current_user.employee_profile.id
+    elif current_user.role == UserRole.manager:
+        raise HTTPException(status_code=403, detail="Manager 不可代員工建立請假申請")
     elif not employee_id:
         raise HTTPException(status_code=400, detail="必須提供員工編號")
 
@@ -199,18 +206,22 @@ def approve_leave(
     leave_id: int,
     payload: LeaveApprove,
     session: Session = Depends(get_session),
-    current_user: User = Depends(require_roles(UserRole.admin, UserRole.hr)),
+    current_user: User = Depends(require_roles(UserRole.admin, UserRole.hr, UserRole.manager)),
 ):
     leave = session.get(LeaveRequest, leave_id)
     if not leave:
         raise HTTPException(status_code=404, detail="找不到請假申請")
+    employee = session.get(Employee, leave.employee_id)
+    if not employee:
+        raise HTTPException(status_code=404, detail="找不到員工")
+    if current_user.role == UserRole.manager and employee.manager_user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="權限不足")
     leave.status = payload.status
     leave.approver_user_id = current_user.id
     session.add(leave)
     session.commit()
     session.refresh(leave)
 
-    employee = session.get(Employee, leave.employee_id)
     user = session.get(User, employee.user_id) if employee else None
     if not employee or not user:
         raise HTTPException(status_code=404, detail="找不到員工")
