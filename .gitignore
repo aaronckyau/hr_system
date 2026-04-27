@@ -4,6 +4,7 @@ Thumbs.db
 .env
 .env.*
 !.env.local.example
+!.env.production.example
 
 backend/.venv/
 backend/__pycache__/

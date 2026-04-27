@@ -12,7 +12,6 @@ cd ~/apps
 git clone https://github.com/aaronckyau/hr_system.git
 cd hr_system
 cp .env.production.example .env.production
-mkdir -p data
 ```
 
 ## Required env
@@ -21,16 +20,26 @@ Edit `.env.production`:
 
 ```bash
 JWT_SECRET_KEY=<long-random-secret>
+POSTGRES_DB=hr_system
+POSTGRES_USER=hr_user
+POSTGRES_PASSWORD=<long-random-postgres-password>
 NEXT_PUBLIC_API_BASE_URL=/hr-api/api
 NEXT_PUBLIC_BASE_PATH=/hr
 CORS_ORIGINS=https://www.4mstrategy.com,https://4mstrategy.com
 ```
 
+Production uses PostgreSQL in Docker service `hr-db`.
+
+- PostgreSQL container: `hr_postgres`
+- Internal database URL: `postgresql+psycopg://<user>:<password>@hr-db:5432/<db>`
+- Host-bound PostgreSQL port: `127.0.0.1:5302`
+- Persistent data volume: `hr_postgres_data`
+
 ## Start containers
 
 ```bash
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
-docker compose -f docker-compose.prod.yml ps
+docker compose --env-file .env.production -f docker-compose.prod.yml ps
 ```
 
 ## Health checks
@@ -38,6 +47,7 @@ docker compose -f docker-compose.prod.yml ps
 ```bash
 curl http://127.0.0.1:5301/health
 curl -I http://127.0.0.1:5300/hr/login
+docker exec hr_postgres pg_isready -U hr_user -d hr_system
 ```
 
 ## Nginx
