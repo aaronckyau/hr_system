@@ -15,6 +15,7 @@ backend/app/services/__pycache__/
 backend/hr_mvp.db
 hr_mvp.db
 backups/
+production-demo-uat-result.json
 
 frontend/node_modules/
 frontend/.next/
