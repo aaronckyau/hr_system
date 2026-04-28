@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
-import { Button, Card, PageHeader, SlideOver, StatusPill } from "@/components/ui";
+import { Alert, Button, Card, EmptyState, PageHeader, SlideOver, StatusPill } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import type { SettingCategory, SettingOption, User } from "@/lib/types";
 
@@ -16,6 +16,18 @@ const categoryLabels: Record<SettingCategory, string> = {
   leave_type: "假期類型",
   earning_type: "收入項目類型",
   deduction_type: "扣款項目類型",
+};
+
+const categoryHints: Record<SettingCategory, string> = {
+  department: "例：HR、Finance、Sales",
+  position: "例：Officer、Manager、Analyst",
+  work_location: "例：香港辦公室、遙距、客戶現場",
+  employment_type: "例：全職、兼職、臨時、實習",
+  employment_status: "例：在職、試用、離職、停職",
+  bank: "例：HSBC、Hang Seng、BOC",
+  leave_type: "例：年假、病假、無薪假",
+  earning_type: "例：佣金、花紅、報銷",
+  deduction_type: "例：遲到、缺勤、其他扣款",
 };
 
 const categories: SettingCategory[] = [
@@ -117,26 +129,28 @@ export function SettingsClient() {
       <PageHeader
         eyebrow="Company Settings"
         title="公司設定"
-        description="HR/Admin 可自行維護部門、職位、工作地點、合約類型、員工狀態，以及假期和薪資項目選項。"
-        action={canManage ? <Button onClick={openCreateDrawer}>新增選項</Button> : null}
+        description="HR/Admin 可自行維護部門、職位、工作地點、合約類型、員工狀態，以及假期和薪資項目選項，不需要改程式碼。"
+        action={canManage ? <Button className="w-full md:w-auto" onClick={openCreateDrawer}>新增選項</Button> : null}
       />
 
-      {error ? <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700 ring-1 ring-red-100">{error}</div> : null}
-      {message ? <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 ring-1 ring-emerald-100">{message}</div> : null}
+      {error ? <Alert>{error}</Alert> : null}
+      {message ? <Alert tone="success">{message}</Alert> : null}
 
       <Card className="p-3">
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
           {categories.map((category) => {
             const active = activeCategory === category;
             const count = options.filter((option) => option.category === category).length;
             return (
               <button
                 key={category}
-                className={`rounded-[1.5rem] px-4 py-4 text-left transition ${active ? "bg-slate-950 text-white shadow-lg shadow-slate-950/15" : "bg-white/70 text-slate-700 ring-1 ring-slate-200 hover:bg-white"}`}
+                className={`rounded-[1.35rem] px-4 py-4 text-left transition ${
+                  active ? "bg-teal-50 text-teal-900 ring-1 ring-teal-100" : "bg-white/75 text-slate-700 ring-1 ring-slate-200 hover:bg-white"
+                }`}
                 onClick={() => setActiveCategory(category)}
                 type="button"
               >
-                <div className="text-sm font-bold">{categoryLabels[category]}</div>
+                <div className="text-sm font-semibold">{categoryLabels[category]}</div>
                 <div className={`mt-1 text-xs ${active ? "text-slate-300" : "text-slate-500"}`}>{count} 個選項</div>
               </button>
             );
@@ -147,8 +161,8 @@ export function SettingsClient() {
       <Card>
         <div className="flex flex-col gap-3 border-b border-slate-200 pb-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-xl font-black tracking-[-0.03em] text-slate-950">{categoryLabels[activeCategory]}</h2>
-            <p className="mt-1 text-sm text-slate-500">排序數字越小越前。停用後不會出現在一般表單下拉選單。</p>
+            <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">{categoryLabels[activeCategory]}</h2>
+            <p className="mt-1 text-sm leading-6 text-slate-500">{categoryHints[activeCategory]}。排序數字越小越前；停用後不會出現在一般表單下拉選單。</p>
           </div>
           {canManage ? (
             <Button variant="secondary" onClick={openCreateDrawer} type="button">
@@ -157,11 +171,11 @@ export function SettingsClient() {
           ) : null}
         </div>
 
-        <div className="mt-5 space-y-3">
+        <div className="mt-5 grid gap-3">
           {visibleOptions.map((option) => (
-            <div key={option.id} className="grid gap-3 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-100 md:grid-cols-[1.5fr_1fr_auto_auto] md:items-center">
+            <div key={option.id} className="grid gap-3 rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100 md:grid-cols-[1.5fr_1fr_auto_auto] md:items-center">
               <div>
-                <div className="font-bold text-slate-950">{option.label}</div>
+                <div className="font-semibold text-slate-950">{option.label}</div>
                 <div className="mt-1 font-mono text-xs text-slate-500">{option.value}</div>
               </div>
               <div className="text-sm text-slate-500">排序：{option.display_order}</div>
@@ -175,14 +189,14 @@ export function SettingsClient() {
               )}
             </div>
           ))}
-          {visibleOptions.length === 0 ? <div className="rounded-2xl bg-slate-50 p-8 text-center text-sm text-slate-500">這個類別暫時未有選項。</div> : null}
+          {visibleOptions.length === 0 ? <EmptyState title="暫時沒有選項" description="新增後會立即用於相關 HR 表單。" /> : null}
         </div>
       </Card>
 
       <SlideOver
         open={drawerOpen}
         title={editingId ? "編輯設定選項" : "新增設定選項"}
-        description={categoryIsRestricted ? "此類別已連接系統邏輯，只可維護系統支援的選項值、名稱、排序及狀態。" : "新增後會即時出現在相關 HR 表單。"}
+        description={categoryIsRestricted ? "此類別已連接系統邏輯，請保持選項值與系統支援值一致。" : "新增後會即時出現在相關 HR 表單。"}
         onClose={() => setDrawerOpen(false)}
         footer={
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -196,8 +210,7 @@ export function SettingsClient() {
         }
       >
         <form id="setting-option-form" className="space-y-5" onSubmit={handleSubmit}>
-          <div>
-            <label className="mb-2 block text-sm font-bold text-slate-700">類別</label>
+          <Field label="類別">
             <select value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value as SettingCategory }))}>
               {categories.map((category) => (
                 <option key={category} value={category}>
@@ -205,25 +218,31 @@ export function SettingsClient() {
                 </option>
               ))}
             </select>
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-bold text-slate-700">顯示名稱</label>
+          </Field>
+          <Field label="顯示名稱">
             <input value={form.label} onChange={(event) => setForm((current) => ({ ...current, label: event.target.value }))} placeholder="例如：人事部" />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-bold text-slate-700">選項值</label>
+          </Field>
+          <Field label="選項值">
             <input value={form.value} onChange={(event) => setForm((current) => ({ ...current, value: event.target.value }))} placeholder="例如：HR" disabled={Boolean(editingId)} />
-          </div>
-          <div>
-            <label className="mb-2 block text-sm font-bold text-slate-700">排序</label>
+          </Field>
+          <Field label="排序">
             <input type="number" value={form.display_order} onChange={(event) => setForm((current) => ({ ...current, display_order: event.target.value }))} />
-          </div>
-          <label className="flex items-center justify-between rounded-2xl bg-white px-4 py-4 text-sm font-bold text-slate-700 ring-1 ring-slate-200">
+          </Field>
+          <label className="flex items-center justify-between rounded-2xl bg-white px-4 py-4 text-sm font-semibold text-slate-700 ring-1 ring-slate-200">
             啟用此選項
-            <input className="h-5 w-5 rounded-lg" type="checkbox" checked={form.is_active} onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))} />
+            <input type="checkbox" checked={form.is_active} onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))} />
           </label>
         </form>
       </SlideOver>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-semibold text-slate-700">{label}</label>
+      {children}
     </div>
   );
 }

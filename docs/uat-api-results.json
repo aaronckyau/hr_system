@@ -1,0 +1,157 @@
+[
+  {
+    "name": "Backend health",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Admin login",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Manager login",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Employee login",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Read current user",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Admin list employees",
+    "status": "PASS",
+    "detail": "HTTP 200, count=7"
+  },
+  {
+    "name": "Employee can only list self",
+    "status": "PASS",
+    "detail": "HTTP 200, count=1"
+  },
+  {
+    "name": "Manager can list assigned team",
+    "status": "PASS",
+    "detail": "HTTP 200, count=4"
+  },
+  {
+    "name": "Create employee",
+    "status": "PASS",
+    "detail": "HTTP 201"
+  },
+  {
+    "name": "Update employee",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Create setting option",
+    "status": "PASS",
+    "detail": "HTTP 201"
+  },
+  {
+    "name": "List setting options",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Read leave config",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Update leave config",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Create/update public holiday",
+    "status": "PASS",
+    "detail": "HTTP 201"
+  },
+  {
+    "name": "List public holidays",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Employee create leave request",
+    "status": "PASS",
+    "detail": "HTTP 201"
+  },
+  {
+    "name": "Manager approve direct report leave",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Read payroll config",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Update payroll config",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Create earning item",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Create deduction item",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Generate payroll",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Read payroll detail",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Download payslip HTML",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Create final pay",
+    "status": "PASS",
+    "detail": "HTTP 200"
+  },
+  {
+    "name": "Download IR56B CSV",
+    "status": "PASS",
+    "detail": "HTTP 200, bytes=816"
+  },
+  {
+    "name": "Download IR56B Excel",
+    "status": "PASS",
+    "detail": "HTTP 200, bytes=5549"
+  },
+  {
+    "name": "List audit logs",
+    "status": "PASS",
+    "detail": "HTTP 200, count=90"
+  },
+  {
+    "name": "Employee denied payroll config",
+    "status": "PASS",
+    "detail": "HTTP 403"
+  },
+  {
+    "name": "Employee denied other payroll detail",
+    "status": "PASS",
+    "detail": "HTTP 403"
+  }
+]

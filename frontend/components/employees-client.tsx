@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
-import { Button, Card, PageHeader } from "@/components/ui";
+import { Alert, Button, Card, EmptyState, PageHeader, StatCard } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import type { Employee, ResetEmployeePasswordResult, SettingOption, User } from "@/lib/types";
 
@@ -12,6 +12,13 @@ const roleOptions = [
   { value: "hr", label: "人事" },
   { value: "admin", label: "管理員" },
 ];
+
+const statusLabels: Record<string, string> = {
+  active: "在職",
+  probation: "試用",
+  terminated: "離職",
+  suspended: "停職",
+};
 
 const initialForm = {
   email: "",
@@ -39,6 +46,10 @@ const initialForm = {
 
 function optionsByCategory(options: SettingOption[], category: string) {
   return options.filter((option) => option.category === category && option.is_active);
+}
+
+function money(amount: number) {
+  return `HK$${amount.toFixed(2)}`;
 }
 
 export function EmployeesClient() {
@@ -120,15 +131,31 @@ export function EmployeesClient() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="HR Master Data" title="員工資料管理" description="可設定員工狀態、直屬主管、部門、職位、工作地點及合約類型。下拉選項來自公司設定。" />
+      <PageHeader
+        eyebrow="HR Master Data"
+        title="員工資料管理"
+        description="以手機、平板及桌面都可操作的方式管理員工檔案、主管、部門、職位、狀態與薪酬資料。下拉選項來自公司設定。"
+      />
 
-      {error ? <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700 ring-1 ring-red-100">{error}</div> : null}
+      {error ? <Alert>{error}</Alert> : null}
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="員工總數" value={employees.length} />
+        <StatCard label="在職" value={employees.filter((employee) => employee.employment_status === "active").length} tone="brand" />
+        <StatCard label="試用" value={employees.filter((employee) => employee.employment_status === "probation").length} tone="warm" />
+        <StatCard label="主管人數" value={managerOptions.length} tone="brand" />
+      </section>
 
       {canResetPassword ? (
         <Card>
-          <h2 className="text-xl font-black text-slate-950">員工密碼重設</h2>
-          <form className="mt-4 flex flex-col gap-3 md:flex-row" onSubmit={handleResetPassword}>
-            <select className="md:max-w-sm" value={resetEmployeeId} onChange={(event) => setResetEmployeeId(event.target.value)}>
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">員工密碼重設</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-500">系統會產生一次性臨時密碼，發送給員工後應要求對方首次登入後立即修改。</p>
+            </div>
+          </div>
+          <form className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]" onSubmit={handleResetPassword}>
+            <select value={resetEmployeeId} onChange={(event) => setResetEmployeeId(event.target.value)}>
               <option value="">請選擇員工</option>
               {employees.map((employee) => (
                 <option key={employee.id} value={employee.id}>
@@ -136,30 +163,27 @@ export function EmployeesClient() {
                 </option>
               ))}
             </select>
-            <Button type="submit">重設為臨時密碼</Button>
+            <Button type="submit">重設臨時密碼</Button>
           </form>
           {resetResult ? (
-            <div className="mt-3 rounded-xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-200">
-              <div className="font-medium">{resetResult.employee_name} 的臨時密碼</div>
-              <div className="mt-2 font-mono text-base">{resetResult.temporary_password}</div>
+            <div className="mt-4 rounded-[1.25rem] bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-200">
+              <div className="font-semibold">{resetResult.employee_name} 的臨時密碼</div>
+              <div className="mt-2 rounded-xl bg-white px-3 py-2 font-mono text-base ring-1 ring-amber-100">{resetResult.temporary_password}</div>
             </div>
           ) : null}
         </Card>
       ) : null}
 
       <Card>
-        <h2 className="text-xl font-black text-slate-950">新增員工</h2>
-        <form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
-          <div>
-            <label className="mb-1 block text-sm font-bold">電郵</label>
+        <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">新增員工</h2>
+        <form className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3" onSubmit={handleSubmit}>
+          <Field label="電郵">
             <input value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">姓名</label>
+          </Field>
+          <Field label="姓名">
             <input value={form.full_name} onChange={(event) => setForm((current) => ({ ...current, full_name: event.target.value }))} />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">角色</label>
+          </Field>
+          <Field label="角色">
             <select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))}>
               {roleOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -167,9 +191,8 @@ export function EmployeesClient() {
                 </option>
               ))}
             </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">直屬主管</label>
+          </Field>
+          <Field label="直屬主管">
             <select value={form.manager_user_id} onChange={(event) => setForm((current) => ({ ...current, manager_user_id: event.target.value }))}>
               <option value="">未指定</option>
               {managerOptions.map((employee) => (
@@ -178,111 +201,119 @@ export function EmployeesClient() {
                 </option>
               ))}
             </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">員工編號</label>
+          </Field>
+          <Field label="員工編號">
             <input value={form.employee_no} onChange={(event) => setForm((current) => ({ ...current, employee_no: event.target.value }))} />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">HKID / 護照</label>
+          </Field>
+          <Field label="HKID / 護照">
             <input value={form.hk_id} onChange={(event) => setForm((current) => ({ ...current, hk_id: event.target.value }))} />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">部門</label>
-            {renderOptionSelect("department", "department", "請選擇部門")}
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">職位</label>
-            {renderOptionSelect("job_title", "position", "請選擇職位")}
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">入職日期</label>
+          </Field>
+          <Field label="部門">{renderOptionSelect("department", "department", "請選擇部門")}</Field>
+          <Field label="職位">{renderOptionSelect("job_title", "position", "請選擇職位")}</Field>
+          <Field label="入職日期">
             <input type="date" value={form.employment_start_date} onChange={(event) => setForm((current) => ({ ...current, employment_start_date: event.target.value }))} />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">離職日期</label>
+          </Field>
+          <Field label="離職日期">
             <input type="date" value={form.employment_end_date} onChange={(event) => setForm((current) => ({ ...current, employment_end_date: event.target.value }))} />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">合約類型</label>
-            {renderOptionSelect("employment_type", "employment_type", "請選擇合約類型")}
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">員工狀態</label>
-            {renderOptionSelect("employment_status", "employment_status", "請選擇員工狀態")}
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">工作地點</label>
-            {renderOptionSelect("work_location", "work_location", "請選擇工作地點")}
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">銀行</label>
-            {renderOptionSelect("bank_name", "bank", "請選擇銀行")}
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">電話</label>
+          </Field>
+          <Field label="合約類型">{renderOptionSelect("employment_type", "employment_type", "請選擇合約類型")}</Field>
+          <Field label="員工狀態">{renderOptionSelect("employment_status", "employment_status", "請選擇員工狀態")}</Field>
+          <Field label="工作地點">{renderOptionSelect("work_location", "work_location", "請選擇工作地點")}</Field>
+          <Field label="銀行">{renderOptionSelect("bank_name", "bank", "請選擇銀行")}</Field>
+          <Field label="電話">
             <input value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">銀行戶口</label>
+          </Field>
+          <Field label="銀行戶口">
             <input value={form.bank_account_no} onChange={(event) => setForm((current) => ({ ...current, bank_account_no: event.target.value }))} />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">年假餘額</label>
+          </Field>
+          <Field label="年假餘額">
             <input type="number" value={form.annual_leave_balance} onChange={(event) => setForm((current) => ({ ...current, annual_leave_balance: Number(event.target.value) }))} />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">基本月薪</label>
+          </Field>
+          <Field label="基本月薪">
             <input type="number" value={form.base_salary} onChange={(event) => setForm((current) => ({ ...current, base_salary: Number(event.target.value) }))} />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-bold">津貼</label>
+          </Field>
+          <Field label="津貼">
             <input type="number" value={form.allowances} onChange={(event) => setForm((current) => ({ ...current, allowances: Number(event.target.value) }))} />
+          </Field>
+          <div className="md:col-span-2 xl:col-span-3">
+            <Field label="地址">
+              <textarea value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} />
+            </Field>
           </div>
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-sm font-bold">地址</label>
-            <textarea value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} />
-          </div>
-          <div className="md:col-span-2">
-            <Button type="submit">新增員工</Button>
+          <div className="md:col-span-2 xl:col-span-3">
+            <Button className="w-full sm:w-auto" type="submit">
+              新增員工
+            </Button>
           </div>
         </form>
       </Card>
 
       <Card>
-        <h2 className="text-xl font-black text-slate-950">員工列表</h2>
-        <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
+        <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">員工列表</h2>
+        <div className="mt-5 hidden overflow-x-auto lg:block">
+          <table className="responsive-table min-w-full">
             <thead>
-              <tr className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">
-                <th className="px-3 py-3">姓名</th>
-                <th className="px-3 py-3">編號</th>
-                <th className="px-3 py-3">狀態</th>
-                <th className="px-3 py-3">部門</th>
-                <th className="px-3 py-3">職位</th>
-                <th className="px-3 py-3">主管</th>
-                <th className="px-3 py-3">月薪</th>
+              <tr>
+                <th>姓名</th>
+                <th>編號</th>
+                <th>狀態</th>
+                <th>部門</th>
+                <th>職位</th>
+                <th>主管</th>
+                <th>月薪</th>
               </tr>
             </thead>
             <tbody>
               {employees.map((employee) => {
                 const manager = employees.find((item) => item.user_id === employee.manager_user_id);
                 return (
-                  <tr key={employee.id} className="border-t border-slate-100">
-                    <td className="px-3 py-4 font-semibold">{employee.full_name}</td>
-                    <td className="px-3 py-4">{employee.employee_no}</td>
-                    <td className="px-3 py-4">{employee.employment_status}</td>
-                    <td className="px-3 py-4">{employee.department}</td>
-                    <td className="px-3 py-4">{employee.job_title}</td>
-                    <td className="px-3 py-4">{manager?.full_name ?? "-"}</td>
-                    <td className="px-3 py-4">HK${employee.base_salary.toFixed(2)}</td>
+                  <tr key={employee.id}>
+                    <td className="font-semibold text-slate-950">{employee.full_name}</td>
+                    <td>{employee.employee_no}</td>
+                    <td>{statusLabels[employee.employment_status] ?? employee.employment_status}</td>
+                    <td>{employee.department}</td>
+                    <td>{employee.job_title}</td>
+                    <td>{manager?.full_name ?? "-"}</td>
+                    <td>{money(employee.base_salary)}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
+        <div className="mt-5 grid gap-3 lg:hidden">
+          {employees.map((employee) => {
+            const manager = employees.find((item) => item.user_id === employee.manager_user_id);
+            return (
+              <div key={employee.id} className="rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-lg font-semibold text-slate-950">{employee.full_name}</div>
+                    <div className="mt-1 text-sm text-slate-500">{employee.employee_no}</div>
+                  </div>
+                  <div className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">{statusLabels[employee.employment_status] ?? employee.employment_status}</div>
+                </div>
+                <div className="mt-4 grid gap-2 text-sm text-slate-600">
+                  <div>部門：{employee.department || "-"}</div>
+                  <div>職位：{employee.job_title || "-"}</div>
+                  <div>主管：{manager?.full_name ?? "-"}</div>
+                  <div className="font-semibold text-brand">月薪：{money(employee.base_salary)}</div>
+                </div>
+              </div>
+            );
+          })}
+          {employees.length === 0 ? <EmptyState title="暫時沒有員工" description="新增員工後會在這裡顯示。" /> : null}
+        </div>
       </Card>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-semibold text-slate-700">{label}</label>
+      {children}
     </div>
   );
 }

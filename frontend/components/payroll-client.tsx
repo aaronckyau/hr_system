@@ -2,11 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
+import { Alert, Button, Card, EmptyState, PageHeader, SlideOver, StatCard } from "@/components/ui";
 import { apiFetch, downloadFile } from "@/lib/api";
 import type { Employee, FinalPayRecord, PayrollConfig, PayrollDetail, PayrollRecord } from "@/lib/types";
-import { Button } from "@/components/ui";
 
-function formatCurrency(amount: number) {
+function money(amount: number) {
   return `HK$${amount.toFixed(2)}`;
 }
 
@@ -75,10 +75,7 @@ export function PayrollClient() {
   async function handleGenerate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setPageError("");
-    await apiFetch<PayrollRecord[]>("/payroll/generate", {
-      method: "POST",
-      body: JSON.stringify({ payroll_month: payrollMonth }),
-    });
+    await apiFetch<PayrollRecord[]>("/payroll/generate", { method: "POST", body: JSON.stringify({ payroll_month: payrollMonth }) });
     await loadPageData();
   }
 
@@ -114,13 +111,7 @@ export function PayrollClient() {
         notes: finalPayForm.notes,
       }),
     });
-    setFinalPayForm((current) => ({
-      ...current,
-      unpaid_salary: "0",
-      unused_leave_days: "0",
-      payment_in_lieu_days: "0",
-      notes: "",
-    }));
+    setFinalPayForm((current) => ({ ...current, unpaid_salary: "0", unused_leave_days: "0", payment_in_lieu_days: "0", notes: "" }));
     await loadPageData();
   }
 
@@ -134,275 +125,266 @@ export function PayrollClient() {
     }
   }
 
+  const totalNet = records.reduce((sum, record) => sum + record.net_salary, 0);
+  const totalMpf = records.reduce((sum, record) => sum + record.employee_mpf + record.employer_mpf, 0);
+
   return (
     <div className="space-y-6">
-      <section className="grid gap-6 xl:grid-cols-[1fr_420px]">
-        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-          <h1 className="text-xl font-semibold">薪資與 MPF</h1>
-          <p className="mt-2 text-sm text-slate-500">這裡只保留薪資計算、規則設定、離職結算與薪資結果。收入項目與扣款項目已移到「薪資項目」頁。</p>
-          <form className="mt-4 flex flex-col gap-3 md:flex-row" onSubmit={handleGenerate}>
-            <input className="md:max-w-xs" value={payrollMonth} onChange={(event) => setPayrollMonth(event.target.value)} placeholder="YYYY-MM" />
-            <button className="bg-brand text-white" type="submit">
-              生成薪資
-            </button>
-          </form>
-        </div>
+      <PageHeader
+        eyebrow="Payroll / MPF"
+        title="薪資與 MPF"
+        description="保留薪資計算、MPF 規則、離職結算與糧單明細。收入項目與扣款項目已移到「薪資項目」頁。"
+      />
 
-        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-          <h2 className="text-lg font-semibold">薪資規則設定</h2>
-          <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={handleSaveConfig}>
-            <div>
-              <label className="mb-1 block text-sm font-medium">日薪除數</label>
-              <input type="number" value={config.daily_salary_divisor} onChange={(event) => setConfig((current) => ({ ...current, daily_salary_divisor: Number(event.target.value) }))} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">MPF 比率</label>
-              <input type="number" step="0.001" value={config.mpf_rate} onChange={(event) => setConfig((current) => ({ ...current, mpf_rate: Number(event.target.value) }))} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">MPF 上限</label>
-              <input type="number" step="0.01" value={config.mpf_cap} onChange={(event) => setConfig((current) => ({ ...current, mpf_cap: Number(event.target.value) }))} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">最低有關入息</label>
-              <input type="number" step="0.01" value={config.min_relevant_income} onChange={(event) => setConfig((current) => ({ ...current, min_relevant_income: Number(event.target.value) }))} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">最高有關入息</label>
-              <input type="number" step="0.01" value={config.max_relevant_income} onChange={(event) => setConfig((current) => ({ ...current, max_relevant_income: Number(event.target.value) }))} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">新員工僱員 MPF 豁免日數</label>
-              <input type="number" value={config.new_employee_mpf_exempt_days} onChange={(event) => setConfig((current) => ({ ...current, new_employee_mpf_exempt_days: Number(event.target.value) }))} />
-            </div>
-            <div className="md:col-span-2">
-              <button className="bg-slate-900 text-white" type="submit">
-                儲存規則
-              </button>
-            </div>
-          </form>
-        </div>
+      {pageError ? <Alert>{pageError}</Alert> : null}
+      {detailError ? <Alert>{detailError}</Alert> : null}
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="薪資記錄" value={records.length} />
+        <StatCard label="淨薪合計" value={money(totalNet)} tone="brand" />
+        <StatCard label="MPF 合計" value={money(totalMpf)} />
+        <StatCard label="離職結算" value={finalPays.length} tone="warm" />
       </section>
 
-      <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-        <h2 className="text-lg font-semibold">離職結算</h2>
-        <p className="mt-2 text-sm text-slate-500">第一版包含未發薪金、未放年假折現及代通知金，金額按目前日薪除數計算。</p>
-        <form className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3" onSubmit={handleCreateFinalPay}>
-          <div>
-            <label className="mb-1 block text-sm font-medium">員工</label>
+      <section className="grid gap-6 xl:grid-cols-[1fr_420px]">
+        <Card>
+          <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">產生薪資</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-500">選擇薪資月份後，系統會按目前員工資料、請假、收入項目、扣款項目與 MPF 規則重新計算。</p>
+          <form className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]" onSubmit={handleGenerate}>
+            <input value={payrollMonth} onChange={(event) => setPayrollMonth(event.target.value)} placeholder="YYYY-MM" />
+            <Button type="submit">生成薪資</Button>
+          </form>
+        </Card>
+
+        <Card>
+          <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">薪資規則</h2>
+          <form className="mt-5 grid gap-3 sm:grid-cols-2" onSubmit={handleSaveConfig}>
+            <Field label="日薪除數">
+              <input type="number" value={config.daily_salary_divisor} onChange={(event) => setConfig((current) => ({ ...current, daily_salary_divisor: Number(event.target.value) }))} />
+            </Field>
+            <Field label="MPF 比率">
+              <input type="number" step="0.001" value={config.mpf_rate} onChange={(event) => setConfig((current) => ({ ...current, mpf_rate: Number(event.target.value) }))} />
+            </Field>
+            <Field label="MPF 上限">
+              <input type="number" step="0.01" value={config.mpf_cap} onChange={(event) => setConfig((current) => ({ ...current, mpf_cap: Number(event.target.value) }))} />
+            </Field>
+            <Field label="最低有關入息">
+              <input type="number" step="0.01" value={config.min_relevant_income} onChange={(event) => setConfig((current) => ({ ...current, min_relevant_income: Number(event.target.value) }))} />
+            </Field>
+            <Field label="最高有關入息">
+              <input type="number" step="0.01" value={config.max_relevant_income} onChange={(event) => setConfig((current) => ({ ...current, max_relevant_income: Number(event.target.value) }))} />
+            </Field>
+            <Field label="新員工 MPF 豁免日數">
+              <input type="number" value={config.new_employee_mpf_exempt_days} onChange={(event) => setConfig((current) => ({ ...current, new_employee_mpf_exempt_days: Number(event.target.value) }))} />
+            </Field>
+            <div className="sm:col-span-2">
+              <Button className="w-full sm:w-auto" variant="secondary" type="submit">儲存規則</Button>
+            </div>
+          </form>
+        </Card>
+      </section>
+
+      <Card>
+        <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">離職結算</h2>
+        <form className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3" onSubmit={handleCreateFinalPay}>
+          <Field label="員工">
             <select value={finalPayForm.employee_id} onChange={(event) => setFinalPayForm((current) => ({ ...current, employee_id: event.target.value }))}>
               <option value="">請選擇</option>
               {employees.map((employee) => (
-                <option key={employee.id} value={employee.id}>
-                  {employee.full_name}
-                </option>
+                <option key={employee.id} value={employee.id}>{employee.full_name}</option>
               ))}
             </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">薪資月份</label>
+          </Field>
+          <Field label="薪資月份">
             <input value={finalPayForm.payroll_month} onChange={(event) => setFinalPayForm((current) => ({ ...current, payroll_month: event.target.value }))} />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">離職日期</label>
+          </Field>
+          <Field label="離職日期">
             <input type="date" value={finalPayForm.termination_date} onChange={(event) => setFinalPayForm((current) => ({ ...current, termination_date: event.target.value }))} />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">未發薪金</label>
+          </Field>
+          <Field label="未發薪金">
             <input type="number" min="0" step="0.01" value={finalPayForm.unpaid_salary} onChange={(event) => setFinalPayForm((current) => ({ ...current, unpaid_salary: event.target.value }))} />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">未放年假天數</label>
+          </Field>
+          <Field label="未放年假天數">
             <input type="number" min="0" step="0.5" value={finalPayForm.unused_leave_days} onChange={(event) => setFinalPayForm((current) => ({ ...current, unused_leave_days: event.target.value }))} />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">代通知金天數</label>
+          </Field>
+          <Field label="代通知金天數">
             <input type="number" min="0" step="0.5" value={finalPayForm.payment_in_lieu_days} onChange={(event) => setFinalPayForm((current) => ({ ...current, payment_in_lieu_days: event.target.value }))} />
+          </Field>
+          <div className="md:col-span-2 xl:col-span-3">
+            <Field label="備註">
+              <input value={finalPayForm.notes} onChange={(event) => setFinalPayForm((current) => ({ ...current, notes: event.target.value }))} />
+            </Field>
           </div>
-          <div className="md:col-span-2 lg:col-span-3">
-            <label className="mb-1 block text-sm font-medium">備註</label>
-            <input value={finalPayForm.notes} onChange={(event) => setFinalPayForm((current) => ({ ...current, notes: event.target.value }))} />
-          </div>
-          <div className="md:col-span-2 lg:col-span-3">
-            <button className="bg-brand text-white" type="submit">
-              建立離職結算
-            </button>
+          <div className="md:col-span-2 xl:col-span-3">
+            <Button className="w-full sm:w-auto" type="submit">建立離職結算</Button>
           </div>
         </form>
-        <div className="mt-6 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500">
-                <th className="py-2">員工</th>
-                <th className="py-2">離職日期</th>
-                <th className="py-2">未發薪金</th>
-                <th className="py-2">年假折現</th>
-                <th className="py-2">代通知金</th>
-                <th className="py-2">離職結算淨額</th>
-              </tr>
-            </thead>
-            <tbody>
-              {finalPays.map((record) => (
-                <tr key={record.id} className="border-b border-slate-100">
-                  <td className="py-3">{record.employee_name}</td>
-                  <td>{record.termination_date}</td>
-                  <td>{formatCurrency(record.unpaid_salary)}</td>
-                  <td>{formatCurrency(record.annual_leave_payout)}</td>
-                  <td>{formatCurrency(record.payment_in_lieu)}</td>
-                  <td>{formatCurrency(record.net_final_pay)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      </Card>
 
-      <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-        <div className="mb-3 text-sm text-slate-500">點擊任何一筆薪資記錄即可查看詳細計算。</div>
-        {pageError ? <div className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{pageError}</div> : null}
-        {detailError ? <div className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{detailError}</div> : null}
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
+      <Card>
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">薪資記錄</h2>
+            <p className="mt-1 text-sm text-slate-500">點擊任何一筆薪資記錄可查看詳細計算。</p>
+          </div>
+        </div>
+        <div className="mt-5 hidden overflow-x-auto lg:block">
+          <table className="responsive-table min-w-full">
             <thead>
-              <tr className="border-b border-slate-200 text-slate-500">
-                <th className="py-2">員工</th>
-                <th className="py-2">月份</th>
-                <th className="py-2">總收入</th>
-                <th className="py-2">有關入息</th>
-                <th className="py-2">僱員 MPF</th>
-                <th className="py-2">淨薪</th>
+              <tr>
+                <th>員工</th>
+                <th>月份</th>
+                <th>總收入</th>
+                <th>有關入息</th>
+                <th>僱員 MPF</th>
+                <th>僱主 MPF</th>
+                <th>淨薪</th>
               </tr>
             </thead>
             <tbody>
               {records.map((record) => (
-                <tr key={record.id} className="cursor-pointer border-b border-slate-100 transition hover:bg-slate-50" onClick={() => openPayrollDetail(record.id)}>
-                  <td className="py-3">{record.employee_name}</td>
+                <tr key={record.id} className="cursor-pointer transition hover:bg-slate-50" onClick={() => openPayrollDetail(record.id)}>
+                  <td className="font-semibold text-slate-950">{record.employee_name}</td>
                   <td>{record.payroll_month}</td>
-                  <td>{formatCurrency(record.gross_income)}</td>
-                  <td>{formatCurrency(record.relevant_income)}</td>
-                  <td>{formatCurrency(record.employee_mpf)}</td>
-                  <td>{formatCurrency(record.net_salary)}</td>
+                  <td>{money(record.gross_income)}</td>
+                  <td>{money(record.relevant_income)}</td>
+                  <td>{money(record.employee_mpf)}</td>
+                  <td>{money(record.employer_mpf)}</td>
+                  <td className="font-semibold text-brand">{money(record.net_salary)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      </section>
+        <div className="mt-5 grid gap-3 lg:hidden">
+          {records.map((record) => (
+            <button key={record.id} className="rounded-[1.25rem] bg-slate-50 p-4 text-left ring-1 ring-slate-100" onClick={() => openPayrollDetail(record.id)} type="button">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-semibold text-slate-950">{record.employee_name}</div>
+                  <div className="mt-1 text-sm text-slate-500">{record.payroll_month}</div>
+                </div>
+                <div className="font-semibold text-brand">{money(record.net_salary)}</div>
+              </div>
+              <div className="mt-3 grid gap-1 text-sm text-slate-600">
+                <div>總收入：{money(record.gross_income)}</div>
+                <div>僱員 MPF：{money(record.employee_mpf)}</div>
+                <div>僱主 MPF：{money(record.employer_mpf)}</div>
+              </div>
+            </button>
+          ))}
+          {records.length === 0 ? <EmptyState title="暫時沒有薪資記錄" description="生成薪資後會在這裡顯示。" /> : null}
+        </div>
+      </Card>
 
+      <PayrollDetailDrawer selectedPayroll={selectedPayroll} onClose={() => setSelectedPayroll(null)} />
+    </div>
+  );
+}
+
+function PayrollDetailDrawer({ selectedPayroll, onClose }: { selectedPayroll: PayrollDetail | null; onClose: () => void }) {
+  return (
+    <SlideOver
+      open={Boolean(selectedPayroll)}
+      title={selectedPayroll ? `${selectedPayroll.employee_name} 薪資明細` : "薪資明細"}
+      description={selectedPayroll ? `${selectedPayroll.department} / ${selectedPayroll.job_title} / ${selectedPayroll.payroll_month}` : undefined}
+      onClose={onClose}
+      footer={
+        selectedPayroll ? (
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Button className="w-full sm:w-auto" variant="ghost" onClick={onClose}>關閉</Button>
+            <Button
+              className="w-full sm:w-auto"
+              variant="secondary"
+              onClick={() => downloadFile(`/reports/payslip/${selectedPayroll.id}`, `薪資單-${selectedPayroll.employee_name}-${selectedPayroll.payroll_month}.html`)}
+            >
+              下載薪資單
+            </Button>
+          </div>
+        ) : null
+      }
+    >
       {selectedPayroll ? (
-        <div className="fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-sm" onClick={() => setSelectedPayroll(null)}>
-          <aside className="absolute bottom-0 right-0 h-[94dvh] w-full overflow-y-auto rounded-t-[2rem] bg-[#fbfcf8] p-4 shadow-[-24px_0_80px_rgb(15_23_42/0.18)] md:top-0 md:h-full md:max-w-6xl md:rounded-none md:p-6" onClick={(event) => event.stopPropagation()}>
-            <div className="sticky top-0 z-10 -mx-4 -mt-4 flex flex-col gap-4 border-b border-slate-200 bg-[#fbfcf8]/95 px-4 py-4 backdrop-blur sm:flex-row sm:items-start sm:justify-between md:-mx-6 md:-mt-6 md:px-6 md:py-5">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand">薪資明細</div>
-                <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950 md:text-3xl">{selectedPayroll.employee_name}</h2>
-                <div className="mt-1 text-sm text-slate-500">
-                  {selectedPayroll.department} / {selectedPayroll.job_title} / {selectedPayroll.payroll_month}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-                <Button
-                  className="w-full sm:w-auto"
-                  variant="secondary"
-                  onClick={() => downloadFile(`/reports/payslip/${selectedPayroll.id}`, `薪資單-${selectedPayroll.employee_name}-${selectedPayroll.payroll_month}.html`)}
-                  type="button"
-                >
-                  下載薪資單
-                </Button>
-                <Button className="w-full sm:w-auto" variant="ghost" onClick={() => setSelectedPayroll(null)} type="button">
-                  關閉
-                </Button>
-              </div>
-            </div>
+        <div className="space-y-6">
+          <section className="grid gap-3 sm:grid-cols-2">
+            <MiniStat label="總收入" value={money(selectedPayroll.gross_income)} />
+            <MiniStat label="應課稅 / 非應課稅" value={`${money(selectedPayroll.taxable_income)} / ${money(selectedPayroll.non_taxable_income)}`} />
+            <MiniStat label="扣款總額" value={money(selectedPayroll.deductions)} />
+            <MiniStat label="淨薪" value={money(selectedPayroll.net_salary)} strong />
+          </section>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <div className="text-sm font-medium text-slate-500">總收入</div>
-                <div className="mt-2 text-2xl font-semibold">{formatCurrency(selectedPayroll.gross_income)}</div>
-              </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <div className="text-sm font-medium text-slate-500">應課稅 / 非應課稅</div>
-                <div className="mt-2 text-lg font-semibold">{formatCurrency(selectedPayroll.taxable_income)} / {formatCurrency(selectedPayroll.non_taxable_income)}</div>
-              </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <div className="text-sm font-medium text-slate-500">扣款總額</div>
-                <div className="mt-2 text-2xl font-semibold">{formatCurrency(selectedPayroll.deductions)}</div>
-                <div className="mt-2 text-sm text-slate-500">
-                  無薪假 {selectedPayroll.unpaid_leave_days} 天 / 日薪 {formatCurrency(selectedPayroll.daily_rate)} / 除數 {selectedPayroll.daily_salary_divisor}
+          <Card className="bg-slate-50/80 shadow-none">
+            <h3 className="text-lg font-semibold text-slate-950">收入拆解</h3>
+            <div className="mt-4 space-y-3">
+              {selectedPayroll.earnings_breakdown.map((item, index) => (
+                <div key={`${item.source}-${item.id ?? index}`} className="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
+                  <div className="flex justify-between gap-3">
+                    <span className="font-semibold text-slate-800">{item.description}</span>
+                    <span className="font-semibold">{money(item.amount)}</span>
+                  </div>
+                  <div className="mt-2 text-sm text-slate-500">
+                    {earningTypeLabels[item.earning_type] ?? item.earning_type} / {item.is_taxable ? "應課稅" : "非應課稅"} / {item.counts_for_mpf ? "納入 MPF" : "不納入 MPF"}
+                  </div>
                 </div>
-              </div>
-              <div className="rounded-2xl bg-brand p-4 text-white">
-                <div className="text-sm font-medium text-white/80">淨薪</div>
-                <div className="mt-2 text-2xl font-semibold">{formatCurrency(selectedPayroll.net_salary)}</div>
-                <div className="mt-2 text-sm text-white/80">
-                  {selectedPayroll.employee_mpf_exempt ? selectedPayroll.employee_mpf_exempt_reason : "套用標準 MPF 規則"}
-                </div>
-              </div>
+              ))}
             </div>
+          </Card>
 
-            <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_1fr]">
-              <div className="rounded-2xl border border-slate-200">
-                <div className="border-b border-slate-200 px-4 py-3 font-semibold">收入拆解</div>
-                <div className="space-y-3 px-4 py-4 text-sm">
-                  {selectedPayroll.earnings_breakdown.map((item, index) => (
-                    <div key={`${item.source}-${item.id ?? index}`} className="rounded-xl bg-slate-50 p-3">
-                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                        <span className="font-medium text-slate-700">{item.description}</span>
-                        <span className="font-semibold">{formatCurrency(item.amount)}</span>
-                      </div>
-                      <div className="mt-1 text-slate-500">
-                        {(earningTypeLabels[item.earning_type] ?? item.earning_type)} / {item.is_taxable ? "應課稅" : "非應課稅"} / {item.counts_for_mpf ? "納入 MPF" : "不納入 MPF"}
-                      </div>
-                    </div>
-                  ))}
+          <Card className="bg-slate-50/80 shadow-none">
+            <h3 className="text-lg font-semibold text-slate-950">扣款拆解</h3>
+            <div className="mt-4 space-y-3">
+              {selectedPayroll.deductions_breakdown.length === 0 ? <p className="text-sm text-slate-500">沒有扣款項目。</p> : null}
+              {selectedPayroll.deductions_breakdown.map((item, index) => (
+                <div key={`${item.source}-${item.id ?? index}`} className="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
+                  <div className="flex justify-between gap-3">
+                    <span className="font-semibold text-slate-800">{deductionTypeLabels[item.deduction_type] ?? item.deduction_type}</span>
+                    <span className="font-semibold">{money(item.amount)}</span>
+                  </div>
+                  <div className="mt-2 text-sm text-slate-500">{item.reason}</div>
+                  <div className="mt-1 text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">{sourceLabels[item.source] ?? item.source}</div>
                 </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200">
-                <div className="border-b border-slate-200 px-4 py-3 font-semibold">扣款拆解</div>
-                <div className="space-y-3 px-4 py-4 text-sm">
-                  {selectedPayroll.deductions_breakdown.length === 0 ? (
-                    <div className="text-slate-500">沒有扣款項目。</div>
-                  ) : (
-                    selectedPayroll.deductions_breakdown.map((item, index) => (
-                      <div key={`${item.source}-${item.id ?? index}`} className="rounded-xl bg-slate-50 p-3">
-                        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                          <span className="font-medium text-slate-700">{deductionTypeLabels[item.deduction_type] ?? item.deduction_type}</span>
-                          <span className="font-semibold">{formatCurrency(item.amount)}</span>
-                        </div>
-                        <div className="mt-1 text-slate-500">{item.reason}</div>
-                        <div className="mt-1 text-xs uppercase tracking-[0.15em] text-slate-400">{sourceLabels[item.source] ?? item.source}</div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
+              ))}
             </div>
+          </Card>
 
-            <div className="mt-6 rounded-2xl border border-slate-200">
-              <div className="border-b border-slate-200 px-4 py-3 font-semibold">計算公式</div>
-              <div className="space-y-3 px-4 py-4 text-sm">
-                <div className="flex flex-col gap-1 rounded-xl bg-slate-50 p-3 md:flex-row md:items-center md:justify-between">
-                  <span className="font-medium text-slate-600">有關入息</span>
-                  <span>{selectedPayroll.relevant_income_formula}</span>
-                </div>
-                <div className="flex flex-col gap-1 rounded-xl bg-slate-50 p-3 md:flex-row md:items-center md:justify-between">
-                  <span className="font-medium text-slate-600">僱員 MPF</span>
-                  <span>{selectedPayroll.employee_mpf_formula}</span>
-                </div>
-                <div className="flex flex-col gap-1 rounded-xl bg-slate-50 p-3 md:flex-row md:items-center md:justify-between">
-                  <span className="font-medium text-slate-600">僱主 MPF</span>
-                  <span>{selectedPayroll.employer_mpf_formula}</span>
-                </div>
-                <div className="flex flex-col gap-1 rounded-xl bg-slate-50 p-3 md:flex-row md:items-center md:justify-between">
-                  <span className="font-medium text-slate-600">淨薪</span>
-                  <span>{selectedPayroll.net_salary_formula}</span>
-                </div>
-              </div>
+          <Card className="bg-teal-50 text-teal-900 ring-1 ring-teal-100 shadow-none">
+            <h3 className="text-lg font-semibold">計算公式</h3>
+            <div className="mt-4 space-y-3 text-sm">
+              <Formula label="有關入息" value={selectedPayroll.relevant_income_formula} />
+              <Formula label="僱員 MPF" value={selectedPayroll.employee_mpf_formula} />
+              <Formula label="僱主 MPF" value={selectedPayroll.employer_mpf_formula} />
+              <Formula label="淨薪" value={selectedPayroll.net_salary_formula} />
             </div>
-          </aside>
+          </Card>
         </div>
       ) : null}
+    </SlideOver>
+  );
+}
+
+function MiniStat({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className={`rounded-2xl p-4 ring-1 ${strong ? "bg-teal-50 text-teal-950 ring-teal-100" : "bg-white text-slate-950 ring-slate-100"}`}>
+      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</div>
+      <div className="mt-2 text-xl font-semibold tracking-[-0.035em]">{value}</div>
+    </div>
+  );
+}
+
+function Formula({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-white p-3 ring-1 ring-teal-100">
+      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-teal-700">{label}</div>
+      <div className="mt-1 break-words text-slate-700">{value}</div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-semibold text-slate-700">{label}</label>
+      {children}
     </div>
   );
 }

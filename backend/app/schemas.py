@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, EmailStr
 
@@ -308,5 +308,5 @@ class AuditLogRead(BaseModel):
     entity_type: str
     entity_id: Optional[int]
     summary: str
-    metadata: dict[str, str | int | float | bool | None]
+    metadata: dict[str, Any]
     created_at: str

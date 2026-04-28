@@ -35,10 +35,13 @@ def create_db_and_tables() -> None:
         _ensure_column(cursor, "payrollconfig", "min_relevant_income", "min_relevant_income REAL NOT NULL DEFAULT 7100")
         _ensure_column(cursor, "payrollconfig", "max_relevant_income", "max_relevant_income REAL NOT NULL DEFAULT 30000")
         _ensure_column(cursor, "payrollconfig", "new_employee_mpf_exempt_days", "new_employee_mpf_exempt_days INTEGER NOT NULL DEFAULT 30")
+        _ensure_column(cursor, "employee", "manager_user_id", "manager_user_id INTEGER")
+        _ensure_column(cursor, "employee", "employment_status", "employment_status VARCHAR NOT NULL DEFAULT 'active'")
         _ensure_column(cursor, "employee", "work_location", "work_location TEXT")
         _ensure_column(cursor, "leaverequest", "calendar_days", "calendar_days INTEGER NOT NULL DEFAULT 0")
         _ensure_column(cursor, "leaverequest", "excluded_public_holidays", "excluded_public_holidays INTEGER NOT NULL DEFAULT 0")
         _ensure_column(cursor, "leaverequest", "is_half_day", "is_half_day INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(cursor, "leaverequest", "approver_user_id", "approver_user_id INTEGER")
         connection.commit()
         connection.close()
 

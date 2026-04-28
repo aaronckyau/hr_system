@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { Button, Card, PageHeader } from "@/components/ui";
+import { Alert, Button, Card, EmptyState, PageHeader, StatCard } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import type { Employee, LeaveRequest, PayrollRecord, User } from "@/lib/types";
 
@@ -11,6 +11,10 @@ const statusLabels: Record<string, string> = {
   approved: "已批准",
   rejected: "已拒絕",
 };
+
+function money(amount: number) {
+  return `HK$${amount.toFixed(2)}`;
+}
 
 export function EmployeePortalClient() {
   const [user, setUser] = useState<User | null>(null);
@@ -36,47 +40,37 @@ export function EmployeePortalClient() {
   return (
     <div className="space-y-6">
       <PageHeader eyebrow="Employee Portal" title="個人工作台" description="查看個人資料、假期餘額、請假紀錄與最新糧單。資料範圍由後端權限控制。" />
-      {error ? <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div> : null}
-      <section className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <div className="text-sm text-slate-500">登入身份</div>
-          <div className="mt-3 text-2xl font-black">{user?.full_name ?? "-"}</div>
-          <div className="mt-1 text-sm text-slate-500">{user?.role}</div>
-        </Card>
-        <Card>
-          <div className="text-sm text-slate-500">年假餘額</div>
-          <div className="mt-3 text-3xl font-black">{profile?.annual_leave_balance ?? 0}</div>
-        </Card>
-        <Card>
-          <div className="text-sm text-slate-500">最新淨薪</div>
-          <div className="mt-3 text-3xl font-black">HK${latestPayroll ? latestPayroll.net_salary.toFixed(2) : "0.00"}</div>
-        </Card>
+      {error ? <Alert>{error}</Alert> : null}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <StatCard label="登入身份" value={user?.full_name ?? "-"} helper={user?.role} tone="brand" />
+        <StatCard label="年假餘額" value={profile?.annual_leave_balance ?? 0} />
+        <StatCard label="最新淨薪" value={latestPayroll ? money(latestPayroll.net_salary) : "HK$0.00"} tone="brand" />
       </section>
       <Card>
-        <h2 className="text-xl font-black">個人資料</h2>
+        <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">個人資料</h2>
         {profile ? (
-          <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
-            <div>員工編號：{profile.employee_no}</div>
-            <div>部門：{profile.department}</div>
-            <div>職位：{profile.job_title}</div>
-            <div>狀態：{profile.employment_status}</div>
-            <div>電話：{profile.phone || "-"}</div>
-            <div>工作地點：{profile.work_location || "-"}</div>
+          <div className="mt-5 grid gap-3 text-sm md:grid-cols-2">
+            <Info label="員工編號" value={profile.employee_no} />
+            <Info label="部門" value={profile.department} />
+            <Info label="職位" value={profile.job_title} />
+            <Info label="狀態" value={profile.employment_status} />
+            <Info label="電話" value={profile.phone || "-"} />
+            <Info label="工作地點" value={profile.work_location || "-"} />
           </div>
         ) : (
-          <p className="mt-4 text-sm text-slate-500">未找到員工資料。</p>
+          <EmptyState title="未找到員工資料" />
         )}
       </Card>
       <Card>
-        <h2 className="text-xl font-black">最近請假</h2>
-        <div className="mt-4 space-y-3">
+        <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">最近請假</h2>
+        <div className="mt-5 grid gap-3">
           {leaves.slice(0, 5).map((leave) => (
-            <div key={leave.id} className="rounded-2xl bg-slate-50 p-4">
-              <div className="font-semibold">{leave.start_date} - {leave.end_date}</div>
-              <div className="text-sm text-slate-500">{leave.leave_type} / {leave.days} 日 / {statusLabels[leave.status] ?? leave.status}</div>
+            <div key={leave.id} className="rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100">
+              <div className="font-semibold text-slate-950">{leave.start_date} - {leave.end_date}</div>
+              <div className="mt-1 text-sm text-slate-500">{leave.leave_type} / {leave.days} 日 / {statusLabels[leave.status] ?? leave.status}</div>
             </div>
           ))}
-          {leaves.length === 0 ? <p className="text-sm text-slate-500">未有請假紀錄。</p> : null}
+          {leaves.length === 0 ? <EmptyState title="暫時沒有請假紀錄" /> : null}
         </div>
       </Card>
     </div>
@@ -101,10 +95,7 @@ export function ManagerDashboardClient({ view }: { view: "dashboard" | "team" | 
   async function updateStatus(id: number, status: string) {
     setError("");
     try {
-      await apiFetch<LeaveRequest>(`/leaves/${id}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
-      });
+      await apiFetch<LeaveRequest>(`/leaves/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
       await loadData();
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "更新審批失敗");
@@ -112,75 +103,80 @@ export function ManagerDashboardClient({ view }: { view: "dashboard" | "team" | 
   }
 
   const pendingLeaves = leaves.filter((leave) => leave.status === "pending");
+  const title = view === "team" ? "Team Members" : view === "approvals" ? "審批中心" : view === "calendar" ? "Team Leave Calendar" : "主管工作台";
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Manager Portal" title={view === "team" ? "Team Members" : view === "approvals" ? "審批中心" : view === "calendar" ? "Team Leave Calendar" : "主管工作台"} description="主管只會看到被指派為直屬主管的員工；HR/Admin 可看到全部。" />
-      {error ? <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div> : null}
+      <PageHeader eyebrow="Manager Portal" title={title} description="主管只會看到被指派為直屬主管的員工；HR/Admin 可看到全部。" />
+      {error ? <Alert>{error}</Alert> : null}
+
       {view === "dashboard" ? (
-        <section className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <div className="text-sm text-slate-500">Team 人數</div>
-            <div className="mt-3 text-3xl font-black">{employees.length}</div>
-          </Card>
-          <Card>
-            <div className="text-sm text-slate-500">待審批</div>
-            <div className="mt-3 text-3xl font-black">{pendingLeaves.length}</div>
-          </Card>
-          <Card>
-            <div className="text-sm text-slate-500">今日可用功能</div>
-            <div className="mt-3 text-lg font-black">Team / Approval / Calendar</div>
-          </Card>
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <StatCard label="Team 人數" value={employees.length} tone="brand" />
+          <StatCard label="待審批" value={pendingLeaves.length} tone="warm" />
+          <StatCard label="可用功能" value="Team / Approval / Calendar" />
         </section>
       ) : null}
+
       {view === "team" || view === "dashboard" ? (
         <Card>
-          <h2 className="text-xl font-black">Team Members</h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">Team Members</h2>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
             {employees.map((employee) => (
-              <div key={employee.id} className="rounded-2xl bg-slate-50 p-4">
-                <div className="font-bold">{employee.full_name}</div>
+              <div key={employee.id} className="rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100">
+                <div className="font-semibold text-slate-950">{employee.full_name}</div>
                 <div className="mt-1 text-sm text-slate-500">{employee.employee_no} / {employee.department} / {employee.job_title}</div>
-                <div className="mt-2 text-xs font-bold text-slate-400">狀態：{employee.employment_status}</div>
+                <div className="mt-3 w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">狀態：{employee.employment_status}</div>
               </div>
             ))}
           </div>
         </Card>
       ) : null}
+
       {view === "approvals" || view === "dashboard" ? (
         <Card>
-          <h2 className="text-xl font-black">待審批請假</h2>
-          <div className="mt-4 space-y-3">
+          <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">待審批請假</h2>
+          <div className="mt-5 grid gap-3">
             {pendingLeaves.map((leave) => (
-              <div key={leave.id} className="flex flex-col gap-3 rounded-2xl bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
+              <div key={leave.id} className="flex flex-col gap-4 rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <div className="font-bold">{leave.employee_name}</div>
-                  <div className="text-sm text-slate-500">{leave.start_date} - {leave.end_date} / {leave.leave_type} / {leave.days} 日</div>
+                  <div className="font-semibold text-slate-950">{leave.employee_name}</div>
+                  <div className="mt-1 text-sm text-slate-500">{leave.start_date} - {leave.end_date} / {leave.leave_type} / {leave.days} 日</div>
                 </div>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:flex">
                   <Button onClick={() => updateStatus(leave.id, "approved")}>批准</Button>
                   <Button variant="danger" onClick={() => updateStatus(leave.id, "rejected")}>拒絕</Button>
                 </div>
               </div>
             ))}
-            {pendingLeaves.length === 0 ? <p className="text-sm text-slate-500">暫時沒有待審批申請。</p> : null}
+            {pendingLeaves.length === 0 ? <EmptyState title="暫時沒有待審批申請" /> : null}
           </div>
         </Card>
       ) : null}
+
       {view === "calendar" ? (
         <Card>
-          <h2 className="text-xl font-black">Team Leave Calendar</h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">Team Leave Calendar</h2>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
             {leaves.map((leave) => (
-              <div key={leave.id} className="rounded-2xl bg-slate-50 p-4">
-                <div className="font-bold">{leave.employee_name}</div>
+              <div key={leave.id} className="rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100">
+                <div className="font-semibold text-slate-950">{leave.employee_name}</div>
                 <div className="mt-1 text-sm text-slate-500">{leave.start_date} - {leave.end_date}</div>
-                <div className="mt-2 text-xs font-bold text-slate-400">{leave.leave_type} / {statusLabels[leave.status] ?? leave.status}</div>
+                <div className="mt-3 w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">{leave.leave_type} / {statusLabels[leave.status] ?? leave.status}</div>
               </div>
             ))}
           </div>
         </Card>
       ) : null}
+    </div>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-100">
+      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">{label}</div>
+      <div className="mt-1 font-semibold text-slate-800">{value}</div>
     </div>
   );
 }

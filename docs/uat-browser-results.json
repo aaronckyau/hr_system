@@ -1,0 +1,74 @@
+[
+  {
+    "route": "/dashboard",
+    "status": "PASS",
+    "summary": "MVP DASHBOARD / HR 控制台 / 快速查看員工、人手、請假與薪資狀況。手機版會優先顯示最重要的操作與摘要。",
+    "consoleErrors": []
+  },
+  {
+    "route": "/employees",
+    "status": "PASS",
+    "summary": "HR MASTER DATA / 員工資料管理 / 以手機、平板及桌面都可操作的方式管理員工檔案、主管、部門、職位、狀態與薪酬資料。下拉選項來自公司設定。",
+    "consoleErrors": []
+  },
+  {
+    "route": "/leaves",
+    "status": "PASS",
+    "summary": "LEAVE MANAGEMENT / 請假系統 / 支援員工提交、主管審批、半日假、工作天計算及可配置公眾假期。",
+    "consoleErrors": []
+  },
+  {
+    "route": "/payroll",
+    "status": "PASS",
+    "summary": "PAYROLL / MPF / 薪資與 MPF / 保留薪資計算、MPF 規則、離職結算與糧單明細。收入項目與扣款項目已移到「薪資項目」頁。",
+    "consoleErrors": []
+  },
+  {
+    "route": "/payroll-items",
+    "status": "PASS",
+    "summary": "PAYROLL INPUTS / 薪資項目 / 專門維護會影響跑薪結果的收入項目與扣款項目。薪資計算結果請回到「薪資」頁查看。",
+    "consoleErrors": []
+  },
+  {
+    "route": "/settings",
+    "status": "PASS",
+    "summary": "COMPANY SETTINGS / 公司設定 / HR/Admin 可自行維護部門、職位、工作地點、合約類型、員工狀態，以及假期和薪資項目選項，不需要改程式碼。",
+    "consoleErrors": []
+  },
+  {
+    "route": "/audit",
+    "status": "PASS",
+    "summary": "AUDIT TRAIL / 稽核紀錄 / 集中查看誰在什麼時間做了哪些 HR / Payroll 操作，方便日後追查與對帳。",
+    "consoleErrors": []
+  },
+  {
+    "route": "/reports",
+    "status": "PASS",
+    "summary": "REPORTS / IR56B 報表 / 第一版支援 CSV 與 Excel 匯出，欄位先覆蓋 MVP 必要的人事與收入資料。",
+    "consoleErrors": []
+  },
+  {
+    "route": "/manager/dashboard",
+    "status": "PASS",
+    "summary": "MANAGER PORTAL / 主管工作台 / 主管只會看到被指派為直屬主管的員工；HR/Admin 可看到全部。",
+    "consoleErrors": []
+  },
+  {
+    "route": "/manager/team",
+    "status": "PASS",
+    "summary": "MANAGER PORTAL / Team Members / 主管只會看到被指派為直屬主管的員工；HR/Admin 可看到全部。",
+    "consoleErrors": []
+  },
+  {
+    "route": "/manager/approvals",
+    "status": "PASS",
+    "summary": "MANAGER PORTAL / 審批中心 / 主管只會看到被指派為直屬主管的員工；HR/Admin 可看到全部。",
+    "consoleErrors": []
+  },
+  {
+    "route": "/manager/team-calendar",
+    "status": "PASS",
+    "summary": "MANAGER PORTAL / Team Leave Calendar / 主管只會看到被指派為直屬主管的員工；HR/Admin 可看到全部。",
+    "consoleErrors": []
+  }
+]

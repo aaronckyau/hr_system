@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
+import { Alert, Button, Card, EmptyState, PageHeader, StatCard } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import type { DeductionLine, EarningLine, Employee, SettingOption } from "@/lib/types";
 
@@ -19,7 +20,7 @@ const sourceLabels: Record<string, string> = {
   derived: "系統計算",
 };
 
-function formatCurrency(amount: number) {
+function money(amount: number) {
   return `HK$${amount.toFixed(2)}`;
 }
 
@@ -65,13 +66,11 @@ export function PayrollItemsClient() {
   }, []);
 
   async function refreshEarnings(payrollMonth: string) {
-    const data = await apiFetch<EarningLine[]>(`/payroll/earnings?payroll_month=${encodeURIComponent(payrollMonth)}`);
-    setEarnings(data);
+    setEarnings(await apiFetch<EarningLine[]>(`/payroll/earnings?payroll_month=${encodeURIComponent(payrollMonth)}`));
   }
 
   async function refreshDeductions(payrollMonth: string) {
-    const data = await apiFetch<DeductionLine[]>(`/payroll/deductions?payroll_month=${encodeURIComponent(payrollMonth)}`);
-    setDeductions(data);
+    setDeductions(await apiFetch<DeductionLine[]>(`/payroll/deductions?payroll_month=${encodeURIComponent(payrollMonth)}`));
   }
 
   async function handleAddEarning(event: FormEvent<HTMLFormElement>) {
@@ -89,10 +88,7 @@ export function PayrollItemsClient() {
         counts_for_mpf: earningForm.counts_for_mpf,
       }),
     });
-    await apiFetch("/payroll/generate", {
-      method: "POST",
-      body: JSON.stringify({ payroll_month: earningForm.payroll_month }),
-    });
+    await apiFetch("/payroll/generate", { method: "POST", body: JSON.stringify({ payroll_month: earningForm.payroll_month }) });
     setEarningForm((current) => ({ ...current, amount: "0", description: "" }));
     await refreshEarnings(earningForm.payroll_month);
   }
@@ -110,10 +106,7 @@ export function PayrollItemsClient() {
         reason: deductionForm.reason,
       }),
     });
-    await apiFetch("/payroll/generate", {
-      method: "POST",
-      body: JSON.stringify({ payroll_month: deductionForm.payroll_month }),
-    });
+    await apiFetch("/payroll/generate", { method: "POST", body: JSON.stringify({ payroll_month: deductionForm.payroll_month }) });
     setDeductionForm((current) => ({ ...current, amount: "0", reason: "" }));
     await refreshDeductions(deductionForm.payroll_month);
   }
@@ -128,235 +121,184 @@ export function PayrollItemsClient() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-        <h1 className="text-xl font-semibold">薪資項目</h1>
-        <p className="mt-2 text-sm text-slate-500">這裡專門維護會影響跑薪結果的輸入資料，包括收入項目與扣款項目。薪資計算結果請回到「薪資」頁查看。</p>
-        <div className="mt-4 flex gap-2">
-          <button
-            className={activeTab === "earnings" ? "bg-brand text-white" : "bg-slate-100 text-slate-700"}
-            onClick={() => setActiveTab("earnings")}
-            type="button"
-          >
+      <PageHeader
+        eyebrow="Payroll Inputs"
+        title="薪資項目"
+        description="專門維護會影響跑薪結果的收入項目與扣款項目。薪資計算結果請回到「薪資」頁查看。"
+      />
+
+      {pageError ? <Alert>{pageError}</Alert> : null}
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="收入項目" value={earnings.length} tone="brand" />
+        <StatCard label="扣款項目" value={deductions.length} tone="warm" />
+        <StatCard label="收入合計" value={money(earnings.reduce((sum, item) => sum + item.amount, 0))} />
+        <StatCard label="扣款合計" value={money(deductions.reduce((sum, item) => sum + item.amount, 0))} tone="brand" />
+      </section>
+
+      <Card className="p-3">
+        <div className="grid grid-cols-2 gap-2">
+          <button className={activeTab === "earnings" ? "bg-teal-50 text-teal-900 ring-1 ring-teal-100" : "bg-white text-slate-700 ring-1 ring-slate-200"} onClick={() => setActiveTab("earnings")} type="button">
             收入項目
           </button>
-          <button
-            className={activeTab === "deductions" ? "bg-brand text-white" : "bg-slate-100 text-slate-700"}
-            onClick={() => setActiveTab("deductions")}
-            type="button"
-          >
+          <button className={activeTab === "deductions" ? "bg-teal-50 text-teal-900 ring-1 ring-teal-100" : "bg-white text-slate-700 ring-1 ring-slate-200"} onClick={() => setActiveTab("deductions")} type="button">
             扣款項目
           </button>
         </div>
-      </section>
-
-      {pageError ? <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{pageError}</div> : null}
+      </Card>
 
       {activeTab === "earnings" ? (
-        <>
-          <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <h2 className="text-lg font-semibold">收入項目</h2>
-            <p className="mt-2 text-sm text-slate-500">可在此加入佣金、花紅、報銷與其他收入，並標示是否應課稅及是否納入 MPF。</p>
-            <form className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3" onSubmit={handleAddEarning}>
-              <div>
-                <label className="mb-1 block text-sm font-medium">員工</label>
-                <select value={earningForm.employee_id} onChange={(event) => setEarningForm((current) => ({ ...current, employee_id: event.target.value }))}>
-                  <option value="">請選擇</option>
-                  {employees.map((employee) => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.full_name}
-                    </option>
-                  ))}
+        <ItemsPanel
+          title="收入項目"
+          description="加入佣金、花紅、報銷與其他收入，並標示是否應課稅及是否納入 MPF。"
+          form={
+            <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" onSubmit={handleAddEarning}>
+              <EmployeeSelect employees={employees} value={earningForm.employee_id} onChange={(value) => setEarningForm((current) => ({ ...current, employee_id: value }))} />
+              <Field label="薪資月份">
+                <input value={earningForm.payroll_month} onChange={async (event) => {
+                  const nextMonth = event.target.value;
+                  setEarningForm((current) => ({ ...current, payroll_month: nextMonth }));
+                  await refreshEarnings(nextMonth);
+                }} />
+              </Field>
+              <Field label="收入類型">
+                <select value={earningForm.earning_type} onChange={(event) => {
+                  const defaults = earningTypeDefaults[event.target.value] ?? { taxable: true, mpf: false };
+                  setEarningForm((current) => ({ ...current, earning_type: event.target.value as EarningLine["earning_type"], is_taxable: defaults.taxable, counts_for_mpf: defaults.mpf }));
+                }}>
+                  {optionsFor("earning_type").map((option) => <option key={option.id} value={option.value}>{option.label}</option>)}
                 </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">薪資月份</label>
-                <input
-                  value={earningForm.payroll_month}
-                  onChange={async (event) => {
-                    const nextMonth = event.target.value;
-                    setEarningForm((current) => ({ ...current, payroll_month: nextMonth }));
-                    await refreshEarnings(nextMonth);
-                  }}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">收入類型</label>
-                <select
-                  value={earningForm.earning_type}
-                  onChange={(event) => {
-                    const defaults = earningTypeDefaults[event.target.value] ?? { taxable: true, mpf: false };
-                    setEarningForm((current) => ({
-                      ...current,
-                      earning_type: event.target.value as EarningLine["earning_type"],
-                      is_taxable: defaults.taxable,
-                      counts_for_mpf: defaults.mpf,
-                    }));
-                  }}
-                >
-                  {optionsFor("earning_type").map((option) => (
-                    <option key={option.id} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">金額</label>
+              </Field>
+              <Field label="金額">
                 <input type="number" min="0" step="0.01" value={earningForm.amount} onChange={(event) => setEarningForm((current) => ({ ...current, amount: event.target.value }))} />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">稅務分類</label>
+              </Field>
+              <Field label="稅務分類">
                 <select value={earningForm.is_taxable ? "yes" : "no"} onChange={(event) => setEarningForm((current) => ({ ...current, is_taxable: event.target.value === "yes" }))}>
                   <option value="yes">應課稅</option>
                   <option value="no">非應課稅</option>
                 </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">是否納入 MPF</label>
+              </Field>
+              <Field label="是否納入 MPF">
                 <select value={earningForm.counts_for_mpf ? "yes" : "no"} onChange={(event) => setEarningForm((current) => ({ ...current, counts_for_mpf: event.target.value === "yes" }))}>
                   <option value="yes">是</option>
                   <option value="no">否</option>
                 </select>
+              </Field>
+              <div className="md:col-span-2 xl:col-span-3">
+                <Field label="說明">
+                  <input value={earningForm.description} onChange={(event) => setEarningForm((current) => ({ ...current, description: event.target.value }))} />
+                </Field>
               </div>
-              <div className="md:col-span-2 lg:col-span-3">
-                <label className="mb-1 block text-sm font-medium">說明</label>
-                <input value={earningForm.description} onChange={(event) => setEarningForm((current) => ({ ...current, description: event.target.value }))} />
-              </div>
-              <div className="md:col-span-2 lg:col-span-3">
-                <button className="bg-brand text-white" type="submit">
-                  新增收入
-                </button>
+              <div className="md:col-span-2 xl:col-span-3">
+                <Button className="w-full sm:w-auto" type="submit">新增收入</Button>
               </div>
             </form>
-          </section>
-
-          <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold">收入記錄</h2>
-              <div className="text-sm text-slate-500">月份：{earningForm.payroll_month}</div>
-            </div>
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 text-slate-500">
-                    <th className="py-2">員工</th>
-                    <th className="py-2">類型</th>
-                    <th className="py-2">金額</th>
-                    <th className="py-2">稅務分類</th>
-                    <th className="py-2">MPF</th>
-                    <th className="py-2">來源</th>
-                    <th className="py-2">說明</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {earnings.map((item, index) => {
-                    const employee = employees.find((entry) => entry.id === item.employee_id);
-                    return (
-                      <tr key={`${item.id ?? index}-${item.employee_id}`} className="border-b border-slate-100">
-                        <td className="py-3">{employee?.full_name ?? `#${item.employee_id}`}</td>
-                        <td>{labelFor("earning_type", item.earning_type)}</td>
-                        <td>{formatCurrency(item.amount)}</td>
-                        <td>{item.is_taxable ? "應課稅" : "非應課稅"}</td>
-                        <td>{item.counts_for_mpf ? "納入" : "不納入"}</td>
-                        <td>{sourceLabels[item.source] ?? item.source}</td>
-                        <td>{item.description}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </>
+          }
+          list={earnings.map((item, index) => {
+            const employee = employees.find((entry) => entry.id === item.employee_id);
+            return {
+              key: `${item.id ?? index}-${item.employee_id}`,
+              title: employee?.full_name ?? `#${item.employee_id}`,
+              amount: money(item.amount),
+              meta: `${labelFor("earning_type", item.earning_type)} / ${item.is_taxable ? "應課稅" : "非應課稅"} / ${item.counts_for_mpf ? "納入 MPF" : "不納入 MPF"} / ${sourceLabels[item.source] ?? item.source}`,
+              note: item.description,
+            };
+          })}
+        />
       ) : (
-        <>
-          <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <h2 className="text-lg font-semibold">扣款項目</h2>
-            <p className="mt-2 text-sm text-slate-500">支援缺勤、遲到與其他手動扣款。無薪假會由請假記錄自動帶入，不需在這裡重複輸入。</p>
-            <form className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3" onSubmit={handleAddDeduction}>
-              <div>
-                <label className="mb-1 block text-sm font-medium">員工</label>
-                <select value={deductionForm.employee_id} onChange={(event) => setDeductionForm((current) => ({ ...current, employee_id: event.target.value }))}>
-                  <option value="">請選擇</option>
-                  {employees.map((employee) => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.full_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">薪資月份</label>
-                <input
-                  value={deductionForm.payroll_month}
-                  onChange={async (event) => {
-                    const nextMonth = event.target.value;
-                    setDeductionForm((current) => ({ ...current, payroll_month: nextMonth }));
-                    await refreshDeductions(nextMonth);
-                  }}
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">扣款類型</label>
+        <ItemsPanel
+          title="扣款項目"
+          description="支援缺勤、遲到與其他手動扣款。無薪假由請假記錄自動帶入。"
+          form={
+            <form className="grid gap-4 md:grid-cols-2 xl:grid-cols-3" onSubmit={handleAddDeduction}>
+              <EmployeeSelect employees={employees} value={deductionForm.employee_id} onChange={(value) => setDeductionForm((current) => ({ ...current, employee_id: value }))} />
+              <Field label="薪資月份">
+                <input value={deductionForm.payroll_month} onChange={async (event) => {
+                  const nextMonth = event.target.value;
+                  setDeductionForm((current) => ({ ...current, payroll_month: nextMonth }));
+                  await refreshDeductions(nextMonth);
+                }} />
+              </Field>
+              <Field label="扣款類型">
                 <select value={deductionForm.deduction_type} onChange={(event) => setDeductionForm((current) => ({ ...current, deduction_type: event.target.value as DeductionLine["deduction_type"] }))}>
-                  {optionsFor("deduction_type").map((option) => (
-                    <option key={option.id} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
+                  {optionsFor("deduction_type").map((option) => <option key={option.id} value={option.value}>{option.label}</option>)}
                 </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">金額</label>
+              </Field>
+              <Field label="金額">
                 <input type="number" min="0" step="0.01" value={deductionForm.amount} onChange={(event) => setDeductionForm((current) => ({ ...current, amount: event.target.value }))} />
+              </Field>
+              <div className="md:col-span-2">
+                <Field label="原因">
+                  <input value={deductionForm.reason} onChange={(event) => setDeductionForm((current) => ({ ...current, reason: event.target.value }))} />
+                </Field>
               </div>
-              <div className="md:col-span-2 lg:col-span-2">
-                <label className="mb-1 block text-sm font-medium">原因</label>
-                <input value={deductionForm.reason} onChange={(event) => setDeductionForm((current) => ({ ...current, reason: event.target.value }))} />
-              </div>
-              <div className="md:col-span-2 lg:col-span-3">
-                <button className="bg-brand text-white" type="submit">
-                  新增扣款
-                </button>
+              <div className="md:col-span-2 xl:col-span-3">
+                <Button className="w-full sm:w-auto" type="submit">新增扣款</Button>
               </div>
             </form>
-          </section>
-
-          <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold">扣款記錄</h2>
-              <div className="text-sm text-slate-500">月份：{deductionForm.payroll_month}</div>
-            </div>
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 text-slate-500">
-                    <th className="py-2">員工</th>
-                    <th className="py-2">類型</th>
-                    <th className="py-2">金額</th>
-                    <th className="py-2">來源</th>
-                    <th className="py-2">原因</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {deductions.map((item, index) => {
-                    const employee = employees.find((entry) => entry.id === item.employee_id);
-                    return (
-                      <tr key={`${item.id ?? index}-${item.employee_id}`} className="border-b border-slate-100">
-                        <td className="py-3">{employee?.full_name ?? `#${item.employee_id}`}</td>
-                        <td>{item.deduction_type === "unpaid_leave" ? "無薪假" : labelFor("deduction_type", item.deduction_type)}</td>
-                        <td>{formatCurrency(item.amount)}</td>
-                        <td>{sourceLabels[item.source] ?? item.source}</td>
-                        <td>{item.reason}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </>
+          }
+          list={deductions.map((item, index) => {
+            const employee = employees.find((entry) => entry.id === item.employee_id);
+            return {
+              key: `${item.id ?? index}-${item.employee_id}`,
+              title: employee?.full_name ?? `#${item.employee_id}`,
+              amount: money(item.amount),
+              meta: `${item.deduction_type === "unpaid_leave" ? "無薪假" : labelFor("deduction_type", item.deduction_type)} / ${sourceLabels[item.source] ?? item.source}`,
+              note: item.reason,
+            };
+          })}
+        />
       )}
+    </div>
+  );
+}
+
+function ItemsPanel({ title, description, form, list }: { title: string; description: string; form: React.ReactNode; list: Array<{ key: string; title: string; amount: string; meta: string; note?: string }> }) {
+  return (
+    <section className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
+      <Card>
+        <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">{title}</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
+        <div className="mt-5">{form}</div>
+      </Card>
+      <Card>
+        <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">{title}記錄</h2>
+        <div className="mt-5 grid gap-3">
+          {list.map((item) => (
+            <div key={item.key} className="rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100">
+              <div className="flex items-start justify-between gap-3">
+                <div className="font-semibold text-slate-950">{item.title}</div>
+                <div className="font-semibold text-brand">{item.amount}</div>
+              </div>
+              <div className="mt-2 text-sm text-slate-500">{item.meta}</div>
+              {item.note ? <div className="mt-2 text-sm text-slate-700">{item.note}</div> : null}
+            </div>
+          ))}
+          {list.length === 0 ? <EmptyState title="暫時沒有記錄" /> : null}
+        </div>
+      </Card>
+    </section>
+  );
+}
+
+function EmployeeSelect({ employees, value, onChange }: { employees: Employee[]; value: string; onChange: (value: string) => void }) {
+  return (
+    <Field label="員工">
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="">請選擇</option>
+        {employees.map((employee) => (
+          <option key={employee.id} value={employee.id}>{employee.full_name}</option>
+        ))}
+      </select>
+    </Field>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-semibold text-slate-700">{label}</label>
+      {children}
     </div>
   );
 }

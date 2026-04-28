@@ -174,6 +174,6 @@ export type AuditLog = {
   entity_type: string;
   entity_id?: number | null;
   summary: string;
-  metadata: Record<string, string | number | boolean | null>;
+  metadata: Record<string, unknown>;
   created_at: string;
 };

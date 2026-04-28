@@ -2,26 +2,34 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { PropsWithChildren, useEffect, useState } from "react";
+import { PropsWithChildren, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui";
 import { apiFetch, clearToken, getToken } from "@/lib/api";
 import type { User, UserRole } from "@/lib/types";
 
-const navItems: Array<{ href: string; label: string; description: string; roles?: UserRole[] }> = [
-  { href: "/dashboard", label: "總覽", description: "今日重點" },
-  { href: "/me/dashboard", label: "個人", description: "自助服務" },
-  { href: "/manager/dashboard", label: "主管", description: "Team 狀況", roles: ["admin", "hr", "manager"] },
-  { href: "/manager/team", label: "Team", description: "直屬員工", roles: ["admin", "hr", "manager"] },
-  { href: "/manager/approvals", label: "審批", description: "待處理申請", roles: ["admin", "hr", "manager"] },
-  { href: "/manager/team-calendar", label: "日曆", description: "Team Leave", roles: ["admin", "hr", "manager"] },
-  { href: "/employees", label: "員工", description: "檔案與薪酬", roles: ["admin", "hr"] },
-  { href: "/leaves", label: "請假", description: "申請與審批" },
-  { href: "/payroll", label: "薪資", description: "MPF 與糧單" },
-  { href: "/payroll-items", label: "薪資項目", description: "收入與扣款", roles: ["admin", "hr"] },
-  { href: "/settings", label: "公司設定", description: "下拉選項", roles: ["admin", "hr"] },
-  { href: "/audit", label: "稽核紀錄", description: "操作追蹤", roles: ["admin", "hr"] },
-  { href: "/reports", label: "報表", description: "CSV / Excel", roles: ["admin", "hr"] },
+type NavItem = {
+  href: string;
+  label: string;
+  description: string;
+  group: "工作台" | "HR 管理" | "系統";
+  roles?: UserRole[];
+};
+
+const navItems: NavItem[] = [
+  { href: "/dashboard", label: "總覽", description: "今日重點", group: "工作台" },
+  { href: "/me/dashboard", label: "個人", description: "員工自助服務", group: "工作台", roles: ["employee"] },
+  { href: "/manager/dashboard", label: "主管", description: "Team 狀況", group: "工作台", roles: ["admin", "hr", "manager"] },
+  { href: "/manager/team", label: "Team", description: "直屬員工", group: "工作台", roles: ["admin", "hr", "manager"] },
+  { href: "/manager/approvals", label: "審批", description: "待處理申請", group: "工作台", roles: ["admin", "hr", "manager"] },
+  { href: "/manager/team-calendar", label: "日曆", description: "Team Leave", group: "工作台", roles: ["admin", "hr", "manager"] },
+  { href: "/employees", label: "員工", description: "檔案與薪酬", group: "HR 管理", roles: ["admin", "hr"] },
+  { href: "/leaves", label: "請假", description: "申請與審批", group: "HR 管理" },
+  { href: "/payroll", label: "薪資", description: "MPF 與糧單", group: "HR 管理" },
+  { href: "/payroll-items", label: "薪資項目", description: "收入與扣款", group: "HR 管理", roles: ["admin", "hr"] },
+  { href: "/settings", label: "公司設定", description: "下拉選項", group: "系統", roles: ["admin", "hr"] },
+  { href: "/audit", label: "稽核紀錄", description: "操作追蹤", group: "系統", roles: ["admin", "hr"] },
+  { href: "/reports", label: "報表", description: "CSV / Excel", group: "系統", roles: ["admin", "hr"] },
 ];
 
 const roleLabels: Record<UserRole, string> = {
@@ -31,11 +39,88 @@ const roleLabels: Record<UserRole, string> = {
   employee: "員工",
 };
 
+function NavList({
+  items,
+  pathname,
+  onNavigate,
+  compact = false,
+  userRole,
+}: {
+  items: NavItem[];
+  pathname: string;
+  onNavigate?: () => void;
+  compact?: boolean;
+  userRole: UserRole;
+}) {
+  const groups = Array.from(new Set(items.map((item) => item.group)));
+  const groupLabels: Record<NavItem["group"], string> = {
+    工作台: "工作台",
+    "HR 管理": userRole === "employee" ? "員工自助" : "HR 管理",
+    系統: "系統",
+  };
+  const groupDescriptions: Record<NavItem["group"], string> = {
+    工作台: userRole === "employee" ? "個人入口與每日摘要" : "每日摘要與管理入口",
+    "HR 管理": userRole === "employee" ? "請假與薪資紀錄" : "新增員工、請假、薪資",
+    系統: "設定、稽核與報表",
+  };
+
+  return (
+    <div className={compact ? "space-y-4" : "space-y-5"}>
+      {groups.map((group) => (
+        <div
+          key={group}
+          className={
+            !compact && group === "HR 管理"
+              ? "rounded-[1.35rem] border border-teal-100 bg-teal-50/55 p-2"
+              : undefined
+          }
+        >
+          {!compact ? (
+            <div className="mb-2 px-2">
+              <div className={`text-[0.68rem] font-semibold uppercase tracking-[0.18em] ${group === "HR 管理" ? "text-brand" : "text-slate-400"}`}>
+                {groupLabels[group]}
+              </div>
+              <div className="mt-1 text-xs text-slate-400">{groupDescriptions[group]}</div>
+            </div>
+          ) : null}
+          <div className={compact ? "grid grid-cols-2 gap-2" : "space-y-1"}>
+            {items
+              .filter((item) => item.group === group)
+              .map((item) => {
+                const active = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavigate}
+                    className={`group block rounded-2xl px-3 py-3 transition ${
+                      active
+                        ? "bg-white text-teal-900 ring-1 ring-teal-100"
+                        : group === "HR 管理"
+                          ? "text-slate-700 hover:bg-white hover:text-slate-950"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-950"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold">{item.label}</span>
+                      <span className={`h-2 w-2 rounded-full ${active ? "bg-brand" : "bg-slate-200 group-hover:bg-teal-200"}`} />
+                    </div>
+                    {!compact ? <div className={`mt-1 text-xs ${active ? "text-teal-700" : "text-slate-400"}`}>{item.description}</div> : null}
+                  </Link>
+                );
+              })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function LayoutShell({ children }: PropsWithChildren) {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     const token = getToken();
@@ -51,70 +136,55 @@ export function LayoutShell({ children }: PropsWithChildren) {
       });
   }, [router]);
 
+  const visibleNavItems = useMemo(() => {
+    if (!user) {
+      return [];
+    }
+    return navItems.filter((item) => !item.roles || item.roles.includes(user.role));
+  }, [user]);
+
+  const currentNavItem = visibleNavItems.find((item) => item.href === pathname);
+  const bottomNavItems = visibleNavItems.filter((item) => ["/dashboard", "/employees", "/leaves", "/payroll"].includes(item.href)).slice(0, 4);
+
   if (!user) {
-    return <div className="p-8 text-sm text-slate-500">載入中...</div>;
+    return (
+      <div className="grid min-h-screen place-items-center px-6">
+        <div className="rounded-3xl bg-white px-5 py-4 text-sm font-medium text-slate-500 shadow-sm ring-1 ring-slate-200">載入中...</div>
+      </div>
+    );
   }
 
-  const visibleNavItems = navItems.filter((item) => !item.roles || item.roles.includes(user.role));
-  const currentNavItem = visibleNavItems.find((item) => item.href === pathname);
-
   return (
-    <div className="min-h-screen px-3 py-3 md:px-6 md:py-6">
-      <div className="mx-auto grid max-w-[1500px] gap-4 lg:grid-cols-[280px_1fr] lg:gap-6">
-        <aside className="lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)]">
-          <div className="flex h-full flex-col rounded-[1.5rem] border border-white/70 bg-slate-950 p-3 text-white shadow-[0_28px_90px_rgb(15_23_42/0.22)] md:rounded-[2rem] md:p-4">
-            <div className="rounded-[1.25rem] bg-white/8 p-4 ring-1 ring-white/10 md:rounded-[1.5rem] md:p-5">
-              <div className="flex items-center justify-between gap-3 lg:block">
-                <div>
-                  <div className="text-xs font-bold uppercase tracking-[0.28em] text-teal-200">Hong Kong SME HR</div>
-                  <div className="mt-1 text-lg font-black tracking-[-0.04em] md:mt-3 md:text-2xl">MVP 控制台</div>
-                  <div className="mt-1 text-xs text-slate-400 lg:hidden">{currentNavItem?.label ?? "工作台"}</div>
+    <div className="min-h-screen">
+      <div className="mx-auto grid min-h-screen max-w-[1680px] gap-0 lg:grid-cols-[268px_1fr]">
+        <aside className="sticky top-0 hidden h-screen p-4 lg:block">
+          <div className="flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white/92 p-3 shadow-sm">
+            <div className="rounded-[1.25rem] bg-teal-50 p-4 ring-1 ring-teal-100">
+              <div className="flex items-center justify-between gap-3">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white text-sm font-semibold text-brand ring-1 ring-teal-100">HR</div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-brand">Hong Kong SME HR</div>
+                  <div className="mt-1 truncate text-lg font-semibold tracking-[-0.035em] text-slate-950">MVP 控制台</div>
                 </div>
-                <Button
-                  className="shrink-0 bg-white text-slate-950 hover:bg-teal-100 lg:hidden"
-                  onClick={() => setMobileMenuOpen((current) => !current)}
-                  type="button"
-                >
-                  {mobileMenuOpen ? "收起" : "選單"}
-                </Button>
               </div>
-              <div className="mt-2 hidden text-sm leading-6 text-slate-300 lg:block">給 30 人以下團隊使用的 HR、請假與薪資工作台。</div>
             </div>
 
-            <nav className={`${mobileMenuOpen ? "grid" : "hidden"} mt-3 grid-cols-1 gap-2 sm:grid-cols-2 lg:mt-5 lg:block lg:space-y-2`}>
-              {visibleNavItems.map((item) => {
-                const active = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`group block min-h-11 rounded-2xl px-3 py-3 transition lg:px-4 ${
-                      active ? "bg-white text-slate-950 shadow-sm" : "text-slate-300 hover:bg-white/8 hover:text-white"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold lg:text-base">{item.label}</span>
-                      <span className={`h-2 w-2 rounded-full ${active ? "bg-brand" : "bg-white/20 group-hover:bg-teal-200"}`} />
-                    </div>
-                    <div className={`mt-1 hidden text-xs lg:block ${active ? "text-slate-500" : "text-slate-500 group-hover:text-slate-300"}`}>{item.description}</div>
-                  </Link>
-                );
-              })}
+            <nav className="mt-5 flex-1 overflow-y-auto pr-1">
+              <NavList items={visibleNavItems} pathname={pathname} userRole={user.role} />
             </nav>
 
-            <div className={`${mobileMenuOpen ? "block" : "hidden"} mt-3 rounded-[1.25rem] bg-white/8 p-3 ring-1 ring-white/10 lg:mt-auto lg:block lg:rounded-[1.5rem] lg:p-4`}>
+            <div className="mt-4 rounded-[1.25rem] border border-slate-200 bg-slate-50 p-3">
               <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-teal-200 text-sm font-black text-slate-950 lg:h-11 lg:w-11">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-white text-sm font-semibold text-brand ring-1 ring-slate-200">
                   {user.full_name.slice(0, 1).toUpperCase()}
                 </div>
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold">{user.full_name}</div>
-                  <div className="text-xs text-slate-400">{roleLabels[user.role] ?? user.role}</div>
+                  <div className="truncate text-sm font-semibold text-slate-950">{user.full_name}</div>
+                  <div className="text-xs text-slate-500">{roleLabels[user.role] ?? user.role}</div>
                 </div>
               </div>
               <Button
-                className="mt-3 w-full justify-center bg-white/10 text-white ring-1 ring-white/10 hover:bg-white hover:text-slate-950 lg:mt-4"
+                className="mt-3 w-full"
                 variant="ghost"
                 onClick={() => {
                   clearToken();
@@ -126,8 +196,76 @@ export function LayoutShell({ children }: PropsWithChildren) {
             </div>
           </div>
         </aside>
-        <main className="min-w-0 pb-16">{children}</main>
+
+        <div className="min-w-0">
+          <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-[#fbfdfb]/88 px-4 py-3 backdrop-blur-xl lg:px-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Hong Kong SME HR</div>
+                <div className="mt-1 truncate text-lg font-semibold tracking-[-0.035em] text-slate-950 md:text-xl">{currentNavItem?.label ?? "工作台"}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="hidden rounded-2xl bg-white px-4 py-2 text-right shadow-sm ring-1 ring-slate-200 md:block">
+                  <div className="text-sm font-semibold text-slate-950">{user.full_name}</div>
+                  <div className="text-xs text-slate-500">{roleLabels[user.role] ?? user.role}</div>
+                </div>
+                <Button className="lg:hidden" variant="ghost" onClick={() => setDrawerOpen(true)} type="button">
+                  選單
+                </Button>
+              </div>
+            </div>
+          </header>
+
+          <main className="app-shell-surface min-h-[calc(100vh-73px)] px-4 py-5 pb-28 md:px-6 md:py-7 lg:pb-10">
+            <div className="mx-auto max-w-[1280px]">{children}</div>
+          </main>
+        </div>
       </div>
+
+      <nav className="mobile-safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/92 px-3 py-2 shadow-[0_-12px_32px_rgb(15_23_42/0.08)] backdrop-blur-xl lg:hidden">
+        <div className="mx-auto grid max-w-md grid-cols-4 gap-2">
+          {bottomNavItems.map((item) => {
+            const active = pathname === item.href;
+            return (
+              <Link key={item.href} href={item.href} className={`rounded-2xl px-2 py-2 text-center text-xs font-semibold transition ${active ? "bg-teal-50 text-brand ring-1 ring-teal-100" : "text-slate-500 hover:bg-slate-50"}`}>
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+
+      {drawerOpen ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-teal-900/10 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
+          <aside className="absolute bottom-0 left-0 right-0 max-h-[88dvh] overflow-y-auto rounded-t-[2rem] bg-white p-4 shadow-[0_-18px_50px_rgb(15_23_42/0.12)]">
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-[1.5rem] bg-teal-50 p-4 ring-1 ring-teal-100">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand">Hong Kong SME HR</div>
+                <div className="mt-1 text-xl font-semibold text-slate-950">功能選單</div>
+              </div>
+              <Button variant="ghost" onClick={() => setDrawerOpen(false)}>
+                關閉
+              </Button>
+            </div>
+            <NavList items={visibleNavItems} pathname={pathname} onNavigate={() => setDrawerOpen(false)} compact userRole={user.role} />
+            <div className="mt-5 rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
+              <div className="text-sm font-semibold text-slate-950">{user.full_name}</div>
+              <div className="mt-1 text-xs text-slate-500">{roleLabels[user.role] ?? user.role}</div>
+              <Button
+                className="mt-4 w-full"
+                variant="ghost"
+                onClick={() => {
+                  clearToken();
+                  router.replace("/login");
+                }}
+              >
+                登出
+              </Button>
+            </div>
+          </aside>
+        </div>
+      ) : null}
     </div>
   );
 }
