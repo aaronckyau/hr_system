@@ -25,7 +25,7 @@ const navItems: NavItem[] = [
   { href: "/manager/team-calendar", label: "日曆", description: "Team Leave", group: "工作台", roles: ["admin", "hr", "manager"] },
   { href: "/employees", label: "員工", description: "檔案與薪酬", group: "HR 管理", roles: ["admin", "hr"] },
   { href: "/leaves", label: "請假", description: "申請與審批", group: "HR 管理" },
-  { href: "/payroll", label: "薪資", description: "MPF 與糧單", group: "HR 管理" },
+  { href: "/payroll", label: "薪資", description: "MPF 與糧單", group: "HR 管理", roles: ["admin", "hr"] },
   { href: "/payroll-items", label: "薪資項目", description: "收入與扣款", group: "HR 管理", roles: ["admin", "hr"] },
   { href: "/settings", label: "公司設定", description: "下拉選項", group: "系統", roles: ["admin", "hr"] },
   { href: "/audit", label: "稽核紀錄", description: "操作追蹤", group: "系統", roles: ["admin", "hr"] },
@@ -145,6 +145,17 @@ export function LayoutShell({ children }: PropsWithChildren) {
 
   const currentNavItem = visibleNavItems.find((item) => item.href === pathname);
   const bottomNavItems = visibleNavItems.filter((item) => ["/dashboard", "/employees", "/leaves", "/payroll"].includes(item.href)).slice(0, 4);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    const requestedItem = navItems.find((item) => item.href === pathname);
+    const canAccess = !requestedItem?.roles || requestedItem.roles.includes(user.role);
+    if (!canAccess) {
+      router.replace(user.role === "employee" ? "/me/dashboard" : "/manager/dashboard");
+    }
+  }, [pathname, router, user]);
 
   if (!user) {
     return (
