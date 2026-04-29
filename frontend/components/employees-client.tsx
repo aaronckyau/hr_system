@@ -67,7 +67,7 @@ function optionsByCategory(options: SettingOption[], category: string) {
 
 function optionLabel(options: SettingOption[], category: string, value?: string | null) {
   if (!value) return "";
-  return options.find((option) => option.category === category && option.value === value)?.label ?? value;
+  return options.find((option) => option.category === category && option.value === value)?.label ?? fallbackDisplayLabels[value] ?? value;
 }
 
 const fallbackDisplayLabels: Record<string, string> = {
@@ -77,8 +77,13 @@ const fallbackDisplayLabels: Record<string, string> = {
   Sales: "銷售部",
   Admin: "行政部",
   "HR Officer": "人事主任",
+  "Finance Analyst": "財務分析員",
   "Operations Manager": "營運經理",
   "Operations Assistant": "營運助理",
+  "Central Office": "中環辦公室",
+  "Hong Kong Office": "香港辦公室",
+  Remote: "遙距工作",
+  "Client Site": "客戶現場",
   Officer: "主任",
   Analyst: "分析員",
   Manager: "經理",

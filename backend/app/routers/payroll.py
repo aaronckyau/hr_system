@@ -1,3 +1,6 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
@@ -30,6 +33,11 @@ from app.services.audit import write_audit_log
 
 
 router = APIRouter(prefix="/payroll", tags=["payroll"])
+
+
+def current_hk_payroll_month() -> str:
+    now = datetime.now(ZoneInfo("Asia/Hong_Kong"))
+    return f"{now.year}-{now.month:02d}"
 
 
 def config_to_read(config) -> PayrollConfigRead:
@@ -469,6 +477,9 @@ def generate_payroll(
     session: Session = Depends(get_session),
     current_user: User = Depends(require_roles(UserRole.admin, UserRole.hr)),
 ):
+    if payload.payroll_month > current_hk_payroll_month():
+        raise HTTPException(status_code=400, detail="MVP 不允許生成未來月份薪資")
+
     employees_statement = select(Employee)
     if payload.employee_id:
         employees_statement = employees_statement.where(Employee.id == payload.employee_id)

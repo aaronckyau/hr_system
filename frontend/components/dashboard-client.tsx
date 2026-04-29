@@ -14,6 +14,12 @@ const leaveTypeLabels: Record<string, string> = {
   other: "其他",
 };
 
+const leaveStatusLabels: Record<string, string> = {
+  pending: "待批",
+  approved: "已批准",
+  rejected: "已拒絕",
+};
+
 function money(amount: number) {
   return `HK$${amount.toFixed(2)}`;
 }
@@ -153,7 +159,7 @@ export function DashboardClient() {
                       {leaveTypeLabels[leave.leave_type] ?? leave.leave_type} / {leave.start_date} - {leave.end_date}
                     </div>
                   </div>
-                  <div className="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">{leave.status}</div>
+                  <div className="w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">{leaveStatusLabels[leave.status] ?? leave.status}</div>
                 </div>
               </div>
             ))}

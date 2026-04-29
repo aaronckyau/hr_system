@@ -14,21 +14,55 @@ from app.services.audit import write_audit_log
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
-@router.get("/ir56b.csv")
-def download_ir56b_csv(
+def build_ir56b_payload(
     session: Session = Depends(get_session),
     current_user: User = Depends(require_roles(UserRole.admin, UserRole.hr)),
+    tax_year: int | None = None,
+    employee_id: int | None = None,
+    department: str | None = None,
 ):
-    employees = session.exec(select(Employee)).all()
+    employee_statement = select(Employee)
+    if employee_id:
+        employee_statement = employee_statement.where(Employee.id == employee_id)
+    if department:
+        employee_statement = employee_statement.where(Employee.department == department)
+
+    employees = session.exec(employee_statement).all()
     employee_reads = []
     payroll_by_employee = {}
     for employee in employees:
         user = session.get(User, employee.user_id)
         if not user:
             continue
+        payroll_statement = select(PayrollRecord).where(PayrollRecord.employee_id == employee.id)
+        if tax_year:
+            payroll_statement = payroll_statement.where(
+                PayrollRecord.payroll_month >= f"{tax_year}-01",
+                PayrollRecord.payroll_month <= f"{tax_year}-12",
+            )
+        payrolls = session.exec(payroll_statement).all()
+        if tax_year and not payrolls:
+            continue
         employee_reads.append(to_employee_read(employee, user, current_user))
-        payrolls = session.exec(select(PayrollRecord).where(PayrollRecord.employee_id == employee.id)).all()
         payroll_by_employee[employee.id] = [to_payroll_read(payroll, employee, user) for payroll in payrolls]
+    return employee_reads, payroll_by_employee
+
+
+@router.get("/ir56b.csv")
+def download_ir56b_csv(
+    tax_year: int | None = None,
+    employee_id: int | None = None,
+    department: str | None = None,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(require_roles(UserRole.admin, UserRole.hr)),
+):
+    employee_reads, payroll_by_employee = build_ir56b_payload(
+        session=session,
+        current_user=current_user,
+        tax_year=tax_year,
+        employee_id=employee_id,
+        department=department,
+    )
 
     content = export_ir56b_csv(employee_reads, payroll_by_employee)
     write_audit_log(
@@ -38,7 +72,7 @@ def download_ir56b_csv(
         entity_type="report",
         entity_id=None,
         summary="下載 IR56B CSV 報表",
-        metadata={"format": "csv", "employee_count": len(employee_reads)},
+        metadata={"format": "csv", "employee_count": len(employee_reads), "tax_year": tax_year, "employee_id": employee_id, "department": department},
     )
     headers = {"Content-Disposition": 'attachment; filename="ir56b-report.csv"'}
     return Response(content=content, media_type="text/csv; charset=utf-8", headers=headers)
@@ -46,19 +80,19 @@ def download_ir56b_csv(
 
 @router.get("/ir56b.xlsx")
 def download_ir56b_excel(
+    tax_year: int | None = None,
+    employee_id: int | None = None,
+    department: str | None = None,
     session: Session = Depends(get_session),
     current_user: User = Depends(require_roles(UserRole.admin, UserRole.hr)),
 ):
-    employees = session.exec(select(Employee)).all()
-    employee_reads = []
-    payroll_by_employee = {}
-    for employee in employees:
-        user = session.get(User, employee.user_id)
-        if not user:
-            continue
-        employee_reads.append(to_employee_read(employee, user, current_user))
-        payrolls = session.exec(select(PayrollRecord).where(PayrollRecord.employee_id == employee.id)).all()
-        payroll_by_employee[employee.id] = [to_payroll_read(payroll, employee, user) for payroll in payrolls]
+    employee_reads, payroll_by_employee = build_ir56b_payload(
+        session=session,
+        current_user=current_user,
+        tax_year=tax_year,
+        employee_id=employee_id,
+        department=department,
+    )
 
     content = export_ir56b_excel(employee_reads, payroll_by_employee)
     write_audit_log(
@@ -68,7 +102,7 @@ def download_ir56b_excel(
         entity_type="report",
         entity_id=None,
         summary="下載 IR56B Excel 報表",
-        metadata={"format": "xlsx", "employee_count": len(employee_reads)},
+        metadata={"format": "xlsx", "employee_count": len(employee_reads), "tax_year": tax_year, "employee_id": employee_id, "department": department},
     )
     headers = {"Content-Disposition": 'attachment; filename="ir56b-report.xlsx"'}
     return Response(

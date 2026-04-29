@@ -20,6 +20,27 @@ function displayPayrollText(value?: string | null) {
   return value ? translations[value] ?? value : "";
 }
 
+const payrollDisplayLabels: Record<string, string> = {
+  "Human Resources": "人事部",
+  Operations: "營運部",
+  Finance: "財務部",
+  Sales: "銷售部",
+  IT: "資訊科技部",
+  "HR Officer": "人事主任",
+  "Finance Analyst": "財務分析員",
+  "Operations Manager": "營運經理",
+  "Operations Assistant": "營運助理",
+  Officer: "主任",
+  Analyst: "分析員",
+  Manager: "經理",
+  Assistant: "助理",
+};
+
+function displayPayrollLabel(value?: string | null) {
+  if (!value) return "-";
+  return payrollDisplayLabels[value] ?? value;
+}
+
 function currentPayrollMonth() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -169,6 +190,7 @@ export function PayrollClient() {
         <Card>
           <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">產生薪資</h2>
           <p className="mt-2 text-sm leading-6 text-slate-500">選擇薪資月份後，系統會按目前員工資料、請假、收入項目、扣款項目與 MPF 規則重新計算。</p>
+          <p className="mt-2 text-sm leading-6 text-amber-700">MVP 安全規則：不允許生成未來月份薪資，避免未批核薪資被誤當正式出糧資料。</p>
           <form className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]" onSubmit={handleGenerate}>
             <input value={payrollMonth} onChange={(event) => setPayrollMonth(event.target.value)} placeholder="YYYY-MM" />
             <Button type="submit">生成薪資</Button>
@@ -332,7 +354,7 @@ function PayrollDetailDrawer({ selectedPayroll, onClose }: { selectedPayroll: Pa
     <SlideOver
       open={Boolean(selectedPayroll)}
       title={selectedPayroll ? `${selectedPayroll.employee_name} 薪資明細` : "薪資明細"}
-      description={selectedPayroll ? `${selectedPayroll.department} / ${selectedPayroll.job_title} / ${selectedPayroll.payroll_month}` : undefined}
+      description={selectedPayroll ? `${displayPayrollLabel(selectedPayroll.department)} / ${displayPayrollLabel(selectedPayroll.job_title)} / ${selectedPayroll.payroll_month}` : undefined}
       onClose={onClose}
       footer={
         selectedPayroll ? (

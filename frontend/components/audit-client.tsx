@@ -47,7 +47,7 @@ const entityLabels: Record<string, string> = {
 
 const metadataLabels: Record<string, string> = {
   record_count: "記錄數量",
-  employee_id: "員工 ID",
+  employee_id: "員工系統編號",
   payroll_month: "薪資月份",
   employee_no: "員工編號",
   department: "部門",
