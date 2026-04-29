@@ -26,8 +26,10 @@ function money(amount: number) {
 
 function displayPayrollText(value?: string | null) {
   const translations: Record<string, string> = {
-    "Production demo commission": "Production demo 佣金",
-    "Production demo late deduction": "Production demo 遲到扣款",
+    "Production demo commission": "示範佣金",
+    "Production demo late deduction": "示範遲到扣款",
+    "Production demo 佣金": "示範佣金",
+    "Production demo 遲到扣款": "示範遲到扣款",
   };
   return value ? translations[value] ?? value : "";
 }

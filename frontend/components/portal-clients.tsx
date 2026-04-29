@@ -12,6 +12,41 @@ const statusLabels: Record<string, string> = {
   rejected: "已拒絕",
 };
 
+const employeeStatusLabels: Record<string, string> = {
+  active: "在職",
+  probation: "試用",
+  terminated: "離職",
+  suspended: "停職",
+};
+
+const leaveTypeLabels: Record<string, string> = {
+  annual: "年假",
+  sick: "病假",
+  unpaid: "無薪假",
+  maternity: "產假",
+  paternity: "侍產假",
+  compensation: "補假",
+  other: "其他",
+};
+
+const profileDisplayLabels: Record<string, string> = {
+  "Human Resources": "人事部",
+  Operations: "營運部",
+  Finance: "財務部",
+  "HR Officer": "人事主任",
+  "Operations Manager": "營運經理",
+  "Operations Assistant": "營運助理",
+};
+
+function displayLabel(value?: string | null) {
+  if (!value) return "-";
+  return profileDisplayLabels[value] ?? value;
+}
+
+function leaveTypeLabel(value: string) {
+  return leaveTypeLabels[value] ?? value;
+}
+
 function money(amount: number) {
   return `HK$${amount.toFixed(2)}`;
 }
@@ -51,9 +86,9 @@ export function EmployeePortalClient() {
         {profile ? (
           <div className="mt-5 grid gap-3 text-sm md:grid-cols-2">
             <Info label="員工編號" value={profile.employee_no} />
-            <Info label="部門" value={profile.department} />
-            <Info label="職位" value={profile.job_title} />
-            <Info label="狀態" value={profile.employment_status} />
+            <Info label="部門" value={displayLabel(profile.department)} />
+            <Info label="職位" value={displayLabel(profile.job_title)} />
+            <Info label="狀態" value={employeeStatusLabels[profile.employment_status] ?? profile.employment_status} />
             <Info label="電話" value={profile.phone || "-"} />
             <Info label="工作地點" value={profile.work_location || "-"} />
           </div>
@@ -67,7 +102,7 @@ export function EmployeePortalClient() {
           {leaves.slice(0, 5).map((leave) => (
             <div key={leave.id} className="rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100">
               <div className="font-semibold text-slate-950">{leave.start_date} - {leave.end_date}</div>
-              <div className="mt-1 text-sm text-slate-500">{leave.leave_type} / {leave.days} 日 / {statusLabels[leave.status] ?? leave.status}</div>
+              <div className="mt-1 text-sm text-slate-500">{leaveTypeLabel(leave.leave_type)} / {leave.days} 日 / {statusLabels[leave.status] ?? leave.status}</div>
             </div>
           ))}
           {leaves.length === 0 ? <EmptyState title="暫時沒有請假紀錄" /> : null}
@@ -125,8 +160,8 @@ export function ManagerDashboardClient({ view }: { view: "dashboard" | "team" | 
             {employees.map((employee) => (
               <div key={employee.id} className="rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100">
                 <div className="font-semibold text-slate-950">{employee.full_name}</div>
-                <div className="mt-1 text-sm text-slate-500">{employee.employee_no} / {employee.department} / {employee.job_title}</div>
-                <div className="mt-3 w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">狀態：{employee.employment_status}</div>
+                <div className="mt-1 text-sm text-slate-500">{employee.employee_no} / {displayLabel(employee.department)} / {displayLabel(employee.job_title)}</div>
+                <div className="mt-3 w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">狀態：{employeeStatusLabels[employee.employment_status] ?? employee.employment_status}</div>
               </div>
             ))}
           </div>
@@ -141,7 +176,7 @@ export function ManagerDashboardClient({ view }: { view: "dashboard" | "team" | 
               <div key={leave.id} className="flex flex-col gap-4 rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100 md:flex-row md:items-center md:justify-between">
                 <div>
                   <div className="font-semibold text-slate-950">{leave.employee_name}</div>
-                  <div className="mt-1 text-sm text-slate-500">{leave.start_date} - {leave.end_date} / {leave.leave_type} / {leave.days} 日</div>
+                  <div className="mt-1 text-sm text-slate-500">{leave.start_date} - {leave.end_date} / {leaveTypeLabel(leave.leave_type)} / {leave.days} 日</div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex">
                   <Button onClick={() => updateStatus(leave.id, "approved")}>批准</Button>
@@ -162,7 +197,7 @@ export function ManagerDashboardClient({ view }: { view: "dashboard" | "team" | 
               <div key={leave.id} className="rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100">
                 <div className="font-semibold text-slate-950">{leave.employee_name}</div>
                 <div className="mt-1 text-sm text-slate-500">{leave.start_date} - {leave.end_date}</div>
-                <div className="mt-3 w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">{leave.leave_type} / {statusLabels[leave.status] ?? leave.status}</div>
+                <div className="mt-3 w-fit rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">{leaveTypeLabel(leave.leave_type)} / {statusLabels[leave.status] ?? leave.status}</div>
               </div>
             ))}
           </div>

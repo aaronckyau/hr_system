@@ -12,8 +12,10 @@ function money(amount: number) {
 
 function displayPayrollText(value?: string | null) {
   const translations: Record<string, string> = {
-    "Production demo commission": "Production demo 佣金",
-    "Production demo late deduction": "Production demo 遲到扣款",
+    "Production demo commission": "示範佣金",
+    "Production demo late deduction": "示範遲到扣款",
+    "Production demo 佣金": "示範佣金",
+    "Production demo 遲到扣款": "示範遲到扣款",
   };
   return value ? translations[value] ?? value : "";
 }
@@ -21,6 +23,10 @@ function displayPayrollText(value?: string | null) {
 function currentPayrollMonth() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function isFuturePayrollMonth(month: string) {
+  return /^\d{4}-\d{2}$/.test(month) && month > currentPayrollMonth();
 }
 
 const earningTypeLabels: Record<string, string> = {
@@ -259,7 +265,14 @@ export function PayrollClient() {
               {records.map((record) => (
                 <tr key={record.id} className="cursor-pointer transition hover:bg-slate-50" onClick={() => openPayrollDetail(record.id)}>
                   <td className="font-semibold text-slate-950">{record.employee_name}</td>
-                  <td>{record.payroll_month}</td>
+                  <td>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span>{record.payroll_month}</span>
+                      {isFuturePayrollMonth(record.payroll_month) ? (
+                        <span className="rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">預生成月份</span>
+                      ) : null}
+                    </div>
+                  </td>
                   <td>{money(record.gross_income)}</td>
                   <td>{money(record.relevant_income)}</td>
                   <td>{money(record.employee_mpf)}</td>
@@ -288,7 +301,12 @@ export function PayrollClient() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="font-semibold text-slate-950">{record.employee_name}</div>
-                  <div className="mt-1 text-sm text-slate-500">{record.payroll_month}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                    <span>{record.payroll_month}</span>
+                    {isFuturePayrollMonth(record.payroll_month) ? (
+                      <span className="rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">預生成月份</span>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="font-semibold text-brand">{money(record.net_salary)}</div>
               </div>

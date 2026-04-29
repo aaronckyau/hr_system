@@ -31,6 +31,60 @@ const roleLabels: Record<string, string> = {
   employee: "員工",
 };
 
+const entityLabels: Record<string, string> = {
+  employee: "員工",
+  payroll: "薪資",
+  payroll_config: "薪資規則",
+  earning_item: "收入項目",
+  deduction_item: "扣款項目",
+  final_pay: "離職結算",
+  report: "報表",
+  payslip: "薪資單",
+  setting_option: "公司設定",
+  public_holiday: "公眾假期",
+  leave_config: "請假設定",
+};
+
+const metadataLabels: Record<string, string> = {
+  record_count: "記錄數量",
+  employee_id: "員工 ID",
+  payroll_month: "薪資月份",
+  employee_no: "員工編號",
+  department: "部門",
+  job_title: "職位",
+  updated_fields: "更新欄位",
+  amount: "金額",
+  earning_type: "收入類型",
+  deduction_type: "扣款類型",
+  net_final_pay: "離職結算淨額",
+  daily_salary_divisor: "日薪除數",
+  mpf_rate: "MPF 比率",
+  mpf_cap: "MPF 上限",
+  min_relevant_income: "最低有關入息",
+  max_relevant_income: "最高有關入息",
+  category: "分類",
+  value: "值",
+  label: "名稱",
+  format: "格式",
+};
+
+function formatEntity(log: AuditLog) {
+  const entity = entityLabels[log.entity_type] ?? log.entity_type;
+  return log.entity_id ? `${entity} #${log.entity_id}` : entity;
+}
+
+function formatMetadata(metadata: Record<string, unknown>) {
+  const entries = Object.entries(metadata);
+  if (entries.length === 0) return "無";
+  return entries
+    .map(([key, value]) => {
+      const label = metadataLabels[key] ?? key;
+      const displayValue = Array.isArray(value) ? value.join("、") : String(value);
+      return `${label}：${displayValue}`;
+    })
+    .join(" / ");
+}
+
 function formatTimestamp(value: string) {
   return new Date(value).toLocaleString("zh-HK", {
     year: "numeric",
@@ -79,10 +133,8 @@ export function AuditClient() {
                   <td>{roleLabels[log.actor_role] ?? log.actor_role}</td>
                   <td>{eventLabels[log.event_type] ?? log.event_type}</td>
                   <td>{log.summary}</td>
-                  <td>{log.entity_type}{log.entity_id ? ` #${log.entity_id}` : ""}</td>
-                  <td>
-                    {Object.entries(log.metadata).length === 0 ? "無" : Object.entries(log.metadata).map(([key, value]) => `${key}: ${String(value)}`).join(" / ")}
-                  </td>
+                  <td>{formatEntity(log)}</td>
+                  <td>{formatMetadata(log.metadata)}</td>
                 </tr>
               ))}
             </tbody>
@@ -94,6 +146,8 @@ export function AuditClient() {
               <div className="text-sm font-semibold text-slate-950">{eventLabels[log.event_type] ?? log.event_type}</div>
               <div className="mt-1 text-xs text-slate-500">{formatTimestamp(log.created_at)} / {log.actor_name} / {roleLabels[log.actor_role] ?? log.actor_role}</div>
               <div className="mt-3 text-sm text-slate-700">{log.summary}</div>
+              <div className="mt-2 text-xs text-slate-500">{formatEntity(log)}</div>
+              <div className="mt-1 text-xs text-slate-500">{formatMetadata(log.metadata)}</div>
             </div>
           ))}
           {logs.length === 0 ? <EmptyState title="暫時沒有稽核紀錄" /> : null}

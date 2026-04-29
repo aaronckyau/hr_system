@@ -65,6 +65,36 @@ function optionsByCategory(options: SettingOption[], category: string) {
   return options.filter((option) => option.category === category && option.is_active);
 }
 
+function optionLabel(options: SettingOption[], category: string, value?: string | null) {
+  if (!value) return "";
+  return options.find((option) => option.category === category && option.value === value)?.label ?? value;
+}
+
+const fallbackDisplayLabels: Record<string, string> = {
+  "Human Resources": "人事部",
+  Operations: "營運部",
+  Finance: "財務部",
+  Sales: "銷售部",
+  Admin: "行政部",
+  "HR Officer": "人事主任",
+  "Operations Manager": "營運經理",
+  "Operations Assistant": "營運助理",
+  Officer: "主任",
+  Analyst: "分析員",
+  Manager: "經理",
+  Assistant: "助理",
+  full_time: "全職",
+  part_time: "兼職",
+  contract: "合約",
+  intern: "實習",
+};
+
+function displayOptionLabel(options: SettingOption[], category: string, value?: string | null) {
+  if (!value) return "-";
+  const label = optionLabel(options, category, value);
+  return label !== value ? label : fallbackDisplayLabels[value] ?? value;
+}
+
 function money(amount: number) {
   return `HK$${amount.toFixed(2)}`;
 }
@@ -273,71 +303,87 @@ export function EmployeesClient() {
 
       <Card>
         <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">新增員工</h2>
-        <form className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3" onSubmit={handleSubmit}>
-          <Field label="電郵">
-            <input value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} />
-          </Field>
-          <Field label="姓名">
-            <input value={form.full_name} onChange={(event) => setForm((current) => ({ ...current, full_name: event.target.value }))} />
-          </Field>
-          <Field label="角色">
-            <select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))}>
-              {roleOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="直屬主管">
-            <select value={form.manager_user_id} onChange={(event) => setForm((current) => ({ ...current, manager_user_id: event.target.value }))}>
-              <option value="">未指定</option>
-              {managerOptions.map((employee) => (
-                <option key={employee.id} value={employee.user_id ?? ""}>
-                  {employee.full_name} ({employee.employee_no})
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="員工編號">
-            <input value={form.employee_no} onChange={(event) => setForm((current) => ({ ...current, employee_no: event.target.value }))} />
-          </Field>
-          <Field label="HKID / 護照">
-            <input value={form.hk_id} onChange={(event) => setForm((current) => ({ ...current, hk_id: event.target.value }))} />
-          </Field>
-          <Field label="部門">{renderOptionSelect("department", "department", "請選擇部門")}</Field>
-          <Field label="職位">{renderOptionSelect("job_title", "position", "請選擇職位")}</Field>
-          <Field label="入職日期">
-            <input type="date" value={form.employment_start_date} onChange={(event) => setForm((current) => ({ ...current, employment_start_date: event.target.value }))} />
-          </Field>
-          <Field label="離職日期">
-            <input type="date" value={form.employment_end_date} onChange={(event) => setForm((current) => ({ ...current, employment_end_date: event.target.value }))} />
-          </Field>
-          <Field label="合約類型">{renderOptionSelect("employment_type", "employment_type", "請選擇合約類型")}</Field>
-          <Field label="員工狀態">{renderOptionSelect("employment_status", "employment_status", "請選擇員工狀態")}</Field>
-          <Field label="工作地點">{renderOptionSelect("work_location", "work_location", "請選擇工作地點")}</Field>
-          <Field label="銀行">{renderOptionSelect("bank_name", "bank", "請選擇銀行")}</Field>
-          <Field label="電話">
-            <input value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} />
-          </Field>
-          <Field label="銀行戶口">
-            <input value={form.bank_account_no} onChange={(event) => setForm((current) => ({ ...current, bank_account_no: event.target.value }))} />
-          </Field>
-          <Field label="年假餘額">
-            <input type="number" value={form.annual_leave_balance} onChange={(event) => setForm((current) => ({ ...current, annual_leave_balance: Number(event.target.value) }))} />
-          </Field>
-          <Field label="基本月薪">
-            <input type="number" value={form.base_salary} onChange={(event) => setForm((current) => ({ ...current, base_salary: Number(event.target.value) }))} />
-          </Field>
-          <Field label="津貼">
-            <input type="number" value={form.allowances} onChange={(event) => setForm((current) => ({ ...current, allowances: Number(event.target.value) }))} />
-          </Field>
-          <div className="md:col-span-2 xl:col-span-3">
-            <Field label="地址">
-              <textarea value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} />
+        <p className="mt-2 text-sm leading-6 text-slate-500">先填必需資料，再補充僱傭、薪酬及聯絡資料。分段輸入可減少一次過面對太多欄位的壓力。</p>
+        <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
+          <FormSection title="1. 登入與身份" description="建立員工帳戶及基本識別資料。">
+            <Field label="電郵">
+              <input value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} />
             </Field>
-          </div>
-          <div className="md:col-span-2 xl:col-span-3">
+            <Field label="姓名">
+              <input value={form.full_name} onChange={(event) => setForm((current) => ({ ...current, full_name: event.target.value }))} />
+            </Field>
+            <Field label="角色">
+              <select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))}>
+                {roleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="員工編號">
+              <input value={form.employee_no} onChange={(event) => setForm((current) => ({ ...current, employee_no: event.target.value }))} />
+            </Field>
+            <Field label="HKID / 護照">
+              <input value={form.hk_id} onChange={(event) => setForm((current) => ({ ...current, hk_id: event.target.value }))} />
+            </Field>
+            <Field label="直屬主管">
+              <select value={form.manager_user_id} onChange={(event) => setForm((current) => ({ ...current, manager_user_id: event.target.value }))}>
+                <option value="">未指定</option>
+                {managerOptions.map((employee) => (
+                  <option key={employee.id} value={employee.user_id ?? ""}>
+                    {employee.full_name} ({employee.employee_no})
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </FormSection>
+
+          <FormSection title="2. 僱傭資料" description="部門、職位及合約資料來自公司設定，方便日後報表及權限管理。">
+            <Field label="部門">{renderOptionSelect("department", "department", "請選擇部門")}</Field>
+            <Field label="職位">{renderOptionSelect("job_title", "position", "請選擇職位")}</Field>
+            <Field label="工作地點">{renderOptionSelect("work_location", "work_location", "請選擇工作地點")}</Field>
+            <Field label="入職日期">
+              <input type="date" value={form.employment_start_date} onChange={(event) => setForm((current) => ({ ...current, employment_start_date: event.target.value }))} />
+            </Field>
+            <Field label="離職日期">
+              <input type="date" value={form.employment_end_date} onChange={(event) => setForm((current) => ({ ...current, employment_end_date: event.target.value }))} />
+            </Field>
+            <Field label="合約類型">{renderOptionSelect("employment_type", "employment_type", "請選擇合約類型")}</Field>
+            <Field label="員工狀態">{renderOptionSelect("employment_status", "employment_status", "請選擇員工狀態")}</Field>
+          </FormSection>
+
+          <FormSection title="3. 薪酬與銀行" description="銀行名稱由 HR 或員工自由輸入，支援不同銀行或虛擬銀行名稱。">
+            <Field label="基本月薪">
+              <input type="number" value={form.base_salary} onChange={(event) => setForm((current) => ({ ...current, base_salary: Number(event.target.value) }))} />
+            </Field>
+            <Field label="津貼">
+              <input type="number" value={form.allowances} onChange={(event) => setForm((current) => ({ ...current, allowances: Number(event.target.value) }))} />
+            </Field>
+            <Field label="年假餘額">
+              <input type="number" value={form.annual_leave_balance} onChange={(event) => setForm((current) => ({ ...current, annual_leave_balance: Number(event.target.value) }))} />
+            </Field>
+            <Field label="銀行">
+              <input placeholder="例：HSBC、恒生銀行、ZA Bank" value={form.bank_name} onChange={(event) => setForm((current) => ({ ...current, bank_name: event.target.value }))} />
+            </Field>
+            <Field label="銀行戶口">
+              <input value={form.bank_account_no} onChange={(event) => setForm((current) => ({ ...current, bank_account_no: event.target.value }))} />
+            </Field>
+          </FormSection>
+
+          <FormSection title="4. 聯絡資料" description="電話及地址可稍後補充，適合先快速建立員工檔案。">
+            <Field label="電話">
+              <input value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} />
+            </Field>
+            <div className="md:col-span-2">
+              <Field label="地址">
+                <textarea value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} />
+              </Field>
+            </div>
+          </FormSection>
+
+          <div className="flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-slate-500">提交前請確認必填欄位已完成，系統會即時提示缺漏資料。</p>
             <Button className="w-full sm:w-auto" type="submit">
               新增員工
             </Button>
@@ -407,8 +453,8 @@ export function EmployeesClient() {
                     <td className="font-semibold text-slate-950">{employee.full_name}</td>
                     <td>{employee.employee_no}</td>
                     <td>{statusLabels[employee.employment_status] ?? employee.employment_status}</td>
-                    <td>{employee.department}</td>
-                    <td>{employee.job_title}</td>
+                    <td>{displayOptionLabel(settingOptions, "department", employee.department)}</td>
+                    <td>{displayOptionLabel(settingOptions, "position", employee.job_title)}</td>
                     <td>{manager?.full_name ?? "-"}</td>
                     <td>{money(employee.base_salary)}</td>
                     <td>
@@ -433,8 +479,8 @@ export function EmployeesClient() {
                   <div className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">{statusLabels[employee.employment_status] ?? employee.employment_status}</div>
                 </div>
                 <div className="mt-4 grid gap-2 text-sm text-slate-600">
-                  <div>部門：{employee.department || "-"}</div>
-                  <div>職位：{employee.job_title || "-"}</div>
+                  <div>部門：{displayOptionLabel(settingOptions, "department", employee.department)}</div>
+                  <div>職位：{displayOptionLabel(settingOptions, "position", employee.job_title)}</div>
                   <div>主管：{manager?.full_name ?? "-"}</div>
                   <div className="font-semibold text-brand">月薪：{money(employee.base_salary)}</div>
                 </div>
@@ -477,10 +523,16 @@ function EmployeeEditorDrawer({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   function renderOptionSelect(key: keyof typeof initialEditForm, category: string, placeholder: string) {
+    const value = String(editForm[key] ?? "");
+    const options = optionsByCategory(settingOptions, category);
+    const hasCurrentValue = value ? options.some((option) => option.value === value) : false;
     return (
-      <select value={String(editForm[key])} onChange={(event) => onChange((current) => ({ ...current, [key]: event.target.value }))}>
+      <select value={value} onChange={(event) => onChange((current) => ({ ...current, [key]: event.target.value }))}>
         <option value="">{placeholder}</option>
-        {optionsByCategory(settingOptions, category).map((option) => (
+        {value && !hasCurrentValue ? (
+          <option value={value}>{optionLabel(settingOptions, category, value)}（目前值）</option>
+        ) : null}
+        {options.map((option) => (
           <option key={option.id} value={option.value}>
             {option.label}
           </option>
@@ -542,7 +594,9 @@ function EmployeeEditorDrawer({
             <Field label="津貼">
               <input type="number" value={editForm.allowances} onChange={(event) => onChange((current) => ({ ...current, allowances: Number(event.target.value) }))} />
             </Field>
-            <Field label="銀行">{renderOptionSelect("bank_name", "bank", "請選擇銀行")}</Field>
+            <Field label="銀行">
+              <input placeholder="例：HSBC、恒生銀行、ZA Bank" value={editForm.bank_name} onChange={(event) => onChange((current) => ({ ...current, bank_name: event.target.value }))} />
+            </Field>
             <Field label="銀行戶口">
               <input value={editForm.bank_account_no} onChange={(event) => onChange((current) => ({ ...current, bank_account_no: event.target.value }))} />
             </Field>
@@ -553,6 +607,18 @@ function EmployeeEditorDrawer({
         </form>
       ) : null}
     </SlideOver>
+  );
+}
+
+function FormSection({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-[1.5rem] bg-slate-50/70 p-4 ring-1 ring-slate-100 sm:p-5">
+      <div className="mb-4 max-w-2xl">
+        <h3 className="text-lg font-semibold tracking-[-0.025em] text-slate-950">{title}</h3>
+        <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{children}</div>
+    </section>
   );
 }
 
