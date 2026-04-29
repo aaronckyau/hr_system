@@ -19,6 +19,17 @@ const roleLabels: Record<string, string> = {
   employee: "員工",
 };
 
+function validateLeaveForm(form: { employee_id: string; leave_type: string; start_date: string; end_date: string; is_half_day: boolean }, canCreateLeaveForOthers: boolean) {
+  const errors: string[] = [];
+  if (canCreateLeaveForOthers && !form.employee_id) errors.push("請選擇員工");
+  if (!form.leave_type) errors.push("請選擇請假類型");
+  if (!form.start_date) errors.push("請選擇開始日期");
+  if (!form.end_date) errors.push("請選擇結束日期");
+  if (form.start_date && form.end_date && form.end_date < form.start_date) errors.push("結束日期不可早於開始日期");
+  if (form.is_half_day && form.start_date && form.end_date && form.start_date !== form.end_date) errors.push("半日假只支援單日申請");
+  return errors;
+}
+
 export function LeavesClient() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -61,6 +72,11 @@ export function LeavesClient() {
   async function submitLeave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    const validationErrors = validateLeaveForm(form, canCreateLeaveForOthers);
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join("；"));
+      return;
+    }
     try {
       await apiFetch<LeaveRequest>("/leaves", {
         method: "POST",
@@ -132,7 +148,7 @@ export function LeavesClient() {
                 <option value="">請選擇</option>
                 {employees.map((employee) => (
                   <option key={employee.id} value={employee.id}>
-                    {employee.full_name}
+                    {employee.full_name} ({employee.employee_no})
                   </option>
                 ))}
               </select>

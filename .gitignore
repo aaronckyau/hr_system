@@ -16,8 +16,10 @@ backend/hr_mvp.db
 hr_mvp.db
 backups/
 production-demo-uat-result.json
+docs/screenshot-targets.local.json
 
 frontend/node_modules/
 frontend/.next/
+frontend/tsconfig.tsbuildinfo
 
 *.pyc

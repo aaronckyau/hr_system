@@ -10,6 +10,11 @@ function money(amount: number) {
   return `HK$${amount.toFixed(2)}`;
 }
 
+function currentPayrollMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
 const earningTypeLabels: Record<string, string> = {
   commission: "佣金",
   bonus: "花紅",
@@ -41,13 +46,13 @@ export function PayrollClient() {
     max_relevant_income: 30000,
     new_employee_mpf_exempt_days: 30,
   });
-  const [payrollMonth, setPayrollMonth] = useState("2026-04");
+  const [payrollMonth, setPayrollMonth] = useState(currentPayrollMonth());
   const [selectedPayroll, setSelectedPayroll] = useState<PayrollDetail | null>(null);
   const [detailError, setDetailError] = useState("");
   const [pageError, setPageError] = useState("");
   const [finalPayForm, setFinalPayForm] = useState({
     employee_id: "",
-    payroll_month: "2026-04",
+    payroll_month: currentPayrollMonth(),
     termination_date: "",
     unpaid_salary: "0",
     unused_leave_days: "0",
@@ -191,7 +196,7 @@ export function PayrollClient() {
             <select value={finalPayForm.employee_id} onChange={(event) => setFinalPayForm((current) => ({ ...current, employee_id: event.target.value }))}>
               <option value="">請選擇</option>
               {employees.map((employee) => (
-                <option key={employee.id} value={employee.id}>{employee.full_name}</option>
+                <option key={employee.id} value={employee.id}>{employee.full_name} ({employee.employee_no})</option>
               ))}
             </select>
           </Field>
@@ -239,6 +244,7 @@ export function PayrollClient() {
                 <th>僱員 MPF</th>
                 <th>僱主 MPF</th>
                 <th>淨薪</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -251,6 +257,18 @@ export function PayrollClient() {
                   <td>{money(record.employee_mpf)}</td>
                   <td>{money(record.employer_mpf)}</td>
                   <td className="font-semibold text-brand">{money(record.net_salary)}</td>
+                  <td>
+                    <Button
+                      variant="ghost"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openPayrollDetail(record.id);
+                      }}
+                      type="button"
+                    >
+                      查看明細
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -266,6 +284,7 @@ export function PayrollClient() {
                 </div>
                 <div className="font-semibold text-brand">{money(record.net_salary)}</div>
               </div>
+              <div className="mt-3 text-sm font-semibold text-brand">點擊查看明細</div>
               <div className="mt-3 grid gap-1 text-sm text-slate-600">
                 <div>總收入：{money(record.gross_income)}</div>
                 <div>僱員 MPF：{money(record.employee_mpf)}</div>

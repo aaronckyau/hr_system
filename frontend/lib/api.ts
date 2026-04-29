@@ -4,6 +4,32 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   (process.env.NODE_ENV === "production" ? "/hr-api/api" : "http://127.0.0.1:8000/api");
 
+function formatApiDetail(detail: unknown): string {
+  if (typeof detail === "string") {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === "string") {
+          return item;
+        }
+        if (item && typeof item === "object") {
+          const record = item as { loc?: unknown[]; msg?: unknown };
+          const field = Array.isArray(record.loc) ? record.loc.filter((part) => part !== "body").join(".") : "";
+          const message = typeof record.msg === "string" ? record.msg : "資料格式不正確";
+          return field ? `${field}: ${message}` : message;
+        }
+        return String(item);
+      })
+      .join("；");
+  }
+  if (detail && typeof detail === "object") {
+    return JSON.stringify(detail);
+  }
+  return "請求失敗";
+}
+
 export function getToken() {
   if (typeof window === "undefined") {
     return null;
@@ -35,8 +61,8 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   if (!response.ok) {
     const contentType = response.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
-      const payload = (await response.json()) as { detail?: string };
-      throw new Error(payload.detail || "請求失敗");
+      const payload = (await response.json()) as { detail?: unknown };
+      throw new Error(formatApiDetail(payload.detail));
     }
     const error = await response.text();
     throw new Error(error || "請求失敗");

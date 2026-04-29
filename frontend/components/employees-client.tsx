@@ -52,6 +52,24 @@ function money(amount: number) {
   return `HK$${amount.toFixed(2)}`;
 }
 
+function validateEmployeeForm(form: typeof initialForm) {
+  const errors: string[] = [];
+  if (!form.email.trim()) errors.push("請輸入電郵");
+  if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errors.push("電郵格式不正確");
+  if (!form.full_name.trim()) errors.push("請輸入姓名");
+  if (!form.employee_no.trim()) errors.push("請輸入員工編號");
+  if (!form.hk_id.trim()) errors.push("請輸入 HKID / 護照");
+  if (!form.department) errors.push("請選擇部門");
+  if (!form.job_title) errors.push("請選擇職位");
+  if (!form.employment_start_date) errors.push("請選擇入職日期");
+  if (!form.employment_type) errors.push("請選擇合約類型");
+  if (!form.employment_status) errors.push("請選擇員工狀態");
+  if (Number(form.annual_leave_balance) < 0) errors.push("年假餘額不可少於 0");
+  if (Number(form.base_salary) < 0) errors.push("基本月薪不可少於 0");
+  if (Number(form.allowances) < 0) errors.push("津貼不可少於 0");
+  return errors;
+}
+
 export function EmployeesClient() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [settingOptions, setSettingOptions] = useState<SettingOption[]>([]);
@@ -92,6 +110,11 @@ export function EmployeesClient() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    const validationErrors = validateEmployeeForm(form);
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join("；"));
+      return;
+    }
     try {
       await apiFetch<Employee>("/employees", {
         method: "POST",
