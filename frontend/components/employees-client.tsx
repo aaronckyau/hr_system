@@ -2,7 +2,7 @@
 
 import { Dispatch, FormEvent, SetStateAction, useEffect, useState } from "react";
 
-import { Alert, Button, Card, EmptyState, PageHeader, SlideOver, StatCard } from "@/components/ui";
+import { Alert, Button, Card, CompactInfo, CompactInfoGrid, EmptyState, PageHeader, SlideOver, StatCard, StatGrid } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import type { Employee, ResetEmployeePasswordResult, SettingOption, User } from "@/lib/types";
 
@@ -271,12 +271,12 @@ export function EmployeesClient() {
 
       {error ? <Alert>{error}</Alert> : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <StatGrid className="xl:grid-cols-4">
         <StatCard label="員工總數" value={employees.length} />
         <StatCard label="在職" value={employees.filter((employee) => employee.employment_status === "active").length} tone="brand" />
         <StatCard label="試用" value={employees.filter((employee) => employee.employment_status === "probation").length} tone="warm" />
         <StatCard label="主管人數" value={managerOptions.length} tone="brand" />
-      </section>
+      </StatGrid>
 
       {canResetPassword ? (
         <Card>
@@ -471,7 +471,7 @@ export function EmployeesClient() {
             </tbody>
           </table>
         </div>
-        <div className="mt-5 grid gap-3 lg:hidden">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:hidden">
           {filteredEmployees.map((employee) => {
             const manager = employees.find((item) => item.user_id === employee.manager_user_id);
             return (
@@ -483,12 +483,12 @@ export function EmployeesClient() {
                   </div>
                   <div className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">{statusLabels[employee.employment_status] ?? employee.employment_status}</div>
                 </div>
-                <div className="mt-4 grid gap-2 text-sm text-slate-600">
-                  <div>部門：{displayOptionLabel(settingOptions, "department", employee.department)}</div>
-                  <div>職位：{displayOptionLabel(settingOptions, "position", employee.job_title)}</div>
-                  <div>主管：{manager?.full_name ?? "-"}</div>
-                  <div className="font-semibold text-brand">月薪：{money(employee.base_salary)}</div>
-                </div>
+                <CompactInfoGrid className="mt-4">
+                  <CompactInfo label="部門" value={displayOptionLabel(settingOptions, "department", employee.department)} />
+                  <CompactInfo label="職位" value={displayOptionLabel(settingOptions, "position", employee.job_title)} />
+                  <CompactInfo label="主管" value={manager?.full_name ?? "-"} />
+                  <CompactInfo label="月薪" value={money(employee.base_salary)} strong />
+                </CompactInfoGrid>
                 <Button className="mt-4 w-full" variant="ghost" onClick={() => openEmployeeEditor(employee)} type="button">查看 / 編輯</Button>
               </div>
             );

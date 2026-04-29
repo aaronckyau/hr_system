@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
-import { Alert, Button, Card, EmptyState, PageHeader, SlideOver, StatCard } from "@/components/ui";
+import { Alert, Button, Card, CompactInfo, CompactInfoGrid, EmptyState, PageHeader, SlideOver, StatCard, StatGrid } from "@/components/ui";
 import { apiFetch, downloadFile } from "@/lib/api";
 import type { Employee, FinalPayRecord, PayrollConfig, PayrollDetail, PayrollRecord } from "@/lib/types";
 
@@ -179,12 +179,12 @@ export function PayrollClient() {
       {pageError ? <Alert>{pageError}</Alert> : null}
       {detailError ? <Alert>{detailError}</Alert> : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <StatGrid className="xl:grid-cols-4">
         <StatCard label="薪資記錄" value={records.length} />
         <StatCard label="淨薪合計" value={money(totalNet)} tone="brand" />
         <StatCard label="MPF 合計" value={money(totalMpf)} />
         <StatCard label="離職結算" value={finalPays.length} tone="warm" />
-      </section>
+      </StatGrid>
 
       <section className="grid gap-6 xl:grid-cols-[1fr_420px]">
         <Card>
@@ -317,7 +317,7 @@ export function PayrollClient() {
             </tbody>
           </table>
         </div>
-        <div className="mt-5 grid gap-3 lg:hidden">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:hidden">
           {records.map((record) => (
             <button key={record.id} className="rounded-[1.25rem] bg-slate-50 p-4 text-left ring-1 ring-slate-100" onClick={() => openPayrollDetail(record.id)} type="button">
               <div className="flex items-start justify-between gap-3">
@@ -333,11 +333,12 @@ export function PayrollClient() {
                 <div className="font-semibold text-brand">{money(record.net_salary)}</div>
               </div>
               <div className="mt-3 text-sm font-semibold text-brand">點擊查看明細</div>
-              <div className="mt-3 grid gap-1 text-sm text-slate-600">
-                <div>總收入：{money(record.gross_income)}</div>
-                <div>僱員 MPF：{money(record.employee_mpf)}</div>
-                <div>僱主 MPF：{money(record.employer_mpf)}</div>
-              </div>
+              <CompactInfoGrid className="mt-3">
+                <CompactInfo label="總收入" value={money(record.gross_income)} />
+                <CompactInfo label="有關入息" value={money(record.relevant_income)} />
+                <CompactInfo label="僱員 MPF" value={money(record.employee_mpf)} />
+                <CompactInfo label="僱主 MPF" value={money(record.employer_mpf)} />
+              </CompactInfoGrid>
             </button>
           ))}
           {records.length === 0 ? <EmptyState title="暫時沒有薪資記錄" description="生成薪資後會在這裡顯示。" /> : null}

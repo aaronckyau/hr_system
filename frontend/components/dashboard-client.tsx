@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-import { Card, EmptyState, PageHeader, StatCard } from "@/components/ui";
+import { Card, EmptyState, PageHeader, StatCard, StatGrid } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import type { Employee, LeaveRequest, PayrollRecord, User } from "@/lib/types";
 
@@ -44,7 +44,8 @@ export function DashboardClient() {
 
   const pendingLeaves = leaves.filter((item) => item.status === "pending");
   const latestPayroll = payroll.slice(0, 5);
-  const isPeopleManager = currentUser?.role === "admin" || currentUser?.role === "hr" || currentUser?.role === "manager";
+  const isHrUser = currentUser?.role === "admin" || currentUser?.role === "hr";
+  const isManagerUser = currentUser?.role === "manager";
   const isEmployee = currentUser?.role === "employee";
 
   return (
@@ -61,7 +62,7 @@ export function DashboardClient() {
 
       {error ? <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 ring-1 ring-red-100">{error}</div> : null}
 
-      {isPeopleManager ? (
+      {isHrUser ? (
         <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
           <Card className="border-teal-100 bg-gradient-to-br from-white to-teal-50/60">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -82,7 +83,7 @@ export function DashboardClient() {
           </Card>
           <Card>
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">常用 HR 流程</div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
+            <div className="mt-4 grid grid-cols-3 gap-2 lg:grid-cols-1">
               <Link className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 ring-1 ring-slate-100 hover:bg-white" href="/employees">
                 1. 新增 / 管理員工
               </Link>
@@ -91,6 +92,42 @@ export function DashboardClient() {
               </Link>
               <Link className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 ring-1 ring-slate-100 hover:bg-white" href="/payroll">
                 3. 生成薪資
+              </Link>
+            </div>
+          </Card>
+        </section>
+      ) : null}
+
+      {isManagerUser ? (
+        <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <Card className="border-teal-100 bg-gradient-to-br from-white to-teal-50/60">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Manager Portal</div>
+                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em] text-slate-950">團隊、審批、日曆集中處理</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  主管入口只顯示直屬團隊、待審批申請及團隊假期日曆，避免混入 HR 專用的員工檔案或薪資設定。
+                </p>
+              </div>
+              <Link
+                href="/manager/dashboard"
+                className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-brand px-5 py-3 text-sm font-semibold text-white shadow-sm shadow-brand/15 hover:bg-teal-700"
+              >
+                進入主管工作台
+              </Link>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">主管常用功能</div>
+            <div className="mt-4 grid grid-cols-3 gap-2 lg:grid-cols-1">
+              <Link className="rounded-2xl bg-slate-50 px-3 py-3 text-center text-sm font-semibold text-slate-700 ring-1 ring-slate-100 hover:bg-white" href="/manager/team">
+                團隊
+              </Link>
+              <Link className="rounded-2xl bg-slate-50 px-3 py-3 text-center text-sm font-semibold text-slate-700 ring-1 ring-slate-100 hover:bg-white" href="/manager/approvals">
+                審批
+              </Link>
+              <Link className="rounded-2xl bg-slate-50 px-3 py-3 text-center text-sm font-semibold text-slate-700 ring-1 ring-slate-100 hover:bg-white" href="/manager/team-calendar">
+                日曆
               </Link>
             </div>
           </Card>
@@ -118,27 +155,27 @@ export function DashboardClient() {
           </Card>
           <Card>
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">員工常用功能</div>
-            <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
+            <div className="mt-4 grid grid-cols-3 gap-2 lg:grid-cols-1">
               <Link className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 ring-1 ring-slate-100 hover:bg-white" href="/me/dashboard">
                 1. 查看個人資料
               </Link>
               <Link className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 ring-1 ring-slate-100 hover:bg-white" href="/leaves">
                 2. 提交請假申請
               </Link>
-              <Link className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 ring-1 ring-slate-100 hover:bg-white" href="/payroll">
-                3. 查看薪資紀錄
+              <Link className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 ring-1 ring-slate-100 hover:bg-white" href="/me/dashboard">
+                3. 查看我的糧單
               </Link>
             </div>
           </Card>
         </section>
       ) : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <StatGrid className="xl:grid-cols-4">
         <StatCard label="員工數" value={employees.length} helper="目前可見員工" tone="brand" />
         <StatCard label="待批請假" value={pendingLeaves.length} helper="需要主管或 HR 處理" />
         <StatCard label="本期薪資" value={payroll.length} helper="已產生薪資記錄" />
         <StatCard label="在職比例" value={`${employees.filter((item) => item.employment_status !== "terminated").length}/${employees.length || 0}`} helper="排除離職員工" tone="warm" />
-      </section>
+      </StatGrid>
 
       <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <Card>

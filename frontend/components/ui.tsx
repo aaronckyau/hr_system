@@ -25,7 +25,7 @@ export function Button({
 
 export function Card({ children, className = "" }: PropsWithChildren<{ className?: string }>) {
   return (
-    <section className={`rounded-[1.35rem] border border-slate-200/80 bg-white p-4 shadow-sm md:rounded-[1.65rem] md:p-6 ${className}`}>
+    <section className={`rounded-[1.2rem] border border-slate-200/80 bg-white p-3.5 shadow-sm sm:p-4 md:rounded-[1.65rem] md:p-6 ${className}`}>
       {children}
     </section>
   );
@@ -75,10 +75,27 @@ export function StatCard({
   };
 
   return (
-    <div className={`rounded-[1.25rem] p-5 shadow-sm ring-1 ${tones[tone]}`}>
+    <div className={`rounded-[1.1rem] p-3.5 shadow-sm ring-1 sm:p-4 md:rounded-[1.25rem] md:p-5 ${tones[tone]}`}>
       <div className={`text-xs font-semibold uppercase tracking-[0.14em] ${tone === "dark" ? "text-white/70" : "text-slate-500"}`}>{label}</div>
-      <div className="mt-3 text-3xl font-semibold tracking-[-0.035em]">{value}</div>
-      {helper ? <div className={`mt-2 text-sm ${tone === "dark" ? "text-white/70" : "text-slate-500"}`}>{helper}</div> : null}
+      <div className="mt-2 text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">{value}</div>
+      {helper ? <div className={`mt-1.5 text-xs leading-5 sm:text-sm ${tone === "dark" ? "text-white/70" : "text-slate-500"}`}>{helper}</div> : null}
+    </div>
+  );
+}
+
+export function StatGrid({ children, className = "" }: PropsWithChildren<{ className?: string }>) {
+  return <section className={`grid grid-cols-2 gap-3 md:gap-4 ${className}`}>{children}</section>;
+}
+
+export function CompactInfoGrid({ children, className = "" }: PropsWithChildren<{ className?: string }>) {
+  return <div className={`grid grid-cols-2 gap-2 text-sm ${className}`}>{children}</div>;
+}
+
+export function CompactInfo({ label, value, strong = false }: { label: string; value: ReactNode; strong?: boolean }) {
+  return (
+    <div className="rounded-2xl bg-white/70 px-3 py-2 ring-1 ring-slate-100">
+      <div className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-slate-400">{label}</div>
+      <div className={`mt-1 truncate ${strong ? "font-semibold text-teal-700" : "font-semibold text-slate-700"}`}>{value}</div>
     </div>
   );
 }

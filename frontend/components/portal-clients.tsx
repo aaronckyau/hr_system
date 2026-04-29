@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
-import { Alert, Button, Card, EmptyState, PageHeader, StatCard } from "@/components/ui";
+import { Alert, Button, Card, EmptyState, PageHeader, StatCard, StatGrid } from "@/components/ui";
 import { apiFetch, downloadFile } from "@/lib/api";
 import type { Employee, LeaveRequest, PayrollRecord, User } from "@/lib/types";
 
@@ -126,11 +126,11 @@ export function EmployeePortalClient() {
       <PageHeader eyebrow="Employee Portal" title="個人工作台" description="查看個人資料、假期餘額、請假紀錄與最新糧單。資料範圍由後端權限控制。" />
       {error ? <Alert>{error}</Alert> : null}
       {success ? <Alert tone="success">{success}</Alert> : null}
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <StatGrid className="xl:grid-cols-3">
         <StatCard label="登入身份" value={user?.full_name ?? "-"} helper={user?.role} tone="brand" />
         <StatCard label="年假餘額" value={profile?.annual_leave_balance ?? 0} />
         <StatCard label="最新淨薪" value={latestPayroll ? money(latestPayroll.net_salary) : "HK$0.00"} tone="brand" />
-      </section>
+      </StatGrid>
       <section className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
         <Card>
           <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">提交請假申請</h2>
@@ -190,7 +190,7 @@ export function EmployeePortalClient() {
       <Card>
         <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">個人資料</h2>
         {profile ? (
-          <div className="mt-5 grid gap-3 text-sm md:grid-cols-2">
+          <div className="mt-5 grid grid-cols-2 gap-2 text-sm md:gap-3">
             <Info label="員工編號" value={profile.employee_no} />
             <Info label="部門" value={displayLabel(profile.department)} />
             <Info label="職位" value={displayLabel(profile.job_title)} />
@@ -204,7 +204,7 @@ export function EmployeePortalClient() {
       </Card>
       <Card>
         <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">最近請假</h2>
-        <div className="mt-5 grid gap-3">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
           {leaves.slice(0, 5).map((leave) => (
             <div key={leave.id} className="rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100">
               <div className="font-semibold text-slate-950">{leave.start_date} - {leave.end_date}</div>
@@ -252,17 +252,17 @@ export function ManagerDashboardClient({ view }: { view: "dashboard" | "team" | 
       {error ? <Alert>{error}</Alert> : null}
 
       {view === "dashboard" ? (
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <StatGrid className="xl:grid-cols-3">
           <StatCard label="Team 人數" value={employees.length} tone="brand" />
           <StatCard label="待審批" value={pendingLeaves.length} tone="warm" />
           <StatCard label="可用功能" value="團隊 / 審批 / 日曆" />
-        </section>
+        </StatGrid>
       ) : null}
 
       {view === "team" || view === "dashboard" ? (
         <Card>
           <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">團隊成員</h2>
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {employees.map((employee) => (
               <div key={employee.id} className="rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100">
                 <div className="font-semibold text-slate-950">{employee.full_name}</div>
@@ -277,7 +277,7 @@ export function ManagerDashboardClient({ view }: { view: "dashboard" | "team" | 
       {view === "approvals" || view === "dashboard" ? (
         <Card>
           <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">待審批請假</h2>
-          <div className="mt-5 grid gap-3">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
             {pendingLeaves.map((leave) => (
               <div key={leave.id} className="flex flex-col gap-4 rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -298,7 +298,7 @@ export function ManagerDashboardClient({ view }: { view: "dashboard" | "team" | 
       {view === "calendar" ? (
         <Card>
           <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">團隊假期日曆</h2>
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {leaves.map((leave) => (
               <div key={leave.id} className="rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100">
                 <div className="font-semibold text-slate-950">{leave.employee_name}</div>

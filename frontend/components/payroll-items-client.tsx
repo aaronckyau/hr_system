@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
-import { Alert, Button, Card, EmptyState, PageHeader, StatCard } from "@/components/ui";
+import { Alert, Button, Card, EmptyState, PageHeader, StatCard, StatGrid } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import type { DeductionLine, EarningLine, Employee, SettingOption } from "@/lib/types";
 
@@ -139,12 +139,12 @@ export function PayrollItemsClient() {
 
       {pageError ? <Alert>{pageError}</Alert> : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <StatGrid className="xl:grid-cols-4">
         <StatCard label="本月手動收入項目" value={earnings.length} helper={`月份：${earningForm.payroll_month}`} tone="brand" />
         <StatCard label="本月手動扣款項目" value={deductions.length} helper={`月份：${deductionForm.payroll_month}`} tone="warm" />
         <StatCard label="手動收入合計" value={money(earnings.reduce((sum, item) => sum + item.amount, 0))} helper="不包括基本月薪及固定津貼" />
         <StatCard label="手動扣款合計" value={money(deductions.reduce((sum, item) => sum + item.amount, 0))} helper="不包括系統自動扣款" tone="brand" />
-      </section>
+      </StatGrid>
 
       <Card className="p-3">
         <div className="grid grid-cols-2 gap-2">

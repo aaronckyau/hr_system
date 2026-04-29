@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
-import { Alert, Button, Card, EmptyState, PageHeader, StatCard } from "@/components/ui";
+import { Alert, Button, Card, CompactInfo, CompactInfoGrid, EmptyState, PageHeader, StatCard, StatGrid } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import type { Employee, LeaveConfig, LeaveRequest, PublicHoliday, SettingOption, User } from "@/lib/types";
 
@@ -141,12 +141,12 @@ export function LeavesClient() {
 
       {error ? <Alert>{error}</Alert> : null}
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <StatGrid className="xl:grid-cols-4">
         <StatCard label="請假記錄" value={leaves.length} />
         <StatCard label="待批" value={leaves.filter((leave) => leave.status === "pending").length} tone="warm" />
         <StatCard label="已批准" value={leaves.filter((leave) => leave.status === "approved").length} tone="brand" />
         <StatCard label="公眾假期" value={publicHolidays.filter((holiday) => holiday.is_active).length} tone="brand" />
-      </section>
+      </StatGrid>
 
       <Card>
         <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">提交請假</h2>
@@ -283,18 +283,21 @@ export function LeavesClient() {
             </select>
           </Field>
         </div>
-        <div className="mt-5 grid gap-3">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
           {filteredLeaves.map((leave) => (
             <div key={leave.id} className="rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100">
-              <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+              <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
                 <div>
                   <div className="font-semibold text-slate-950">
                     {leave.employee_name} / {labelFor(leave.leave_type)}
                     {leave.is_half_day ? " / 半日假" : ""}
                   </div>
-                  <div className="mt-2 text-sm leading-6 text-slate-500">
-                    {leave.start_date} - {leave.end_date} / 實際 {leave.days} 天 / 曆日 {leave.calendar_days} 天 / 扣除公眾假期 {leave.excluded_public_holidays} 天 / {statusLabels[leave.status] ?? leave.status}
-                  </div>
+                  <CompactInfoGrid className="mt-3">
+                    <CompactInfo label="日期" value={`${leave.start_date} - ${leave.end_date}`} />
+                    <CompactInfo label="狀態" value={statusLabels[leave.status] ?? leave.status} />
+                    <CompactInfo label="實際日數" value={`${leave.days} 天`} strong />
+                    <CompactInfo label="扣公眾假" value={`${leave.excluded_public_holidays} 天`} />
+                  </CompactInfoGrid>
                 </div>
                 {canManageRules && leave.status === "pending" ? (
                   <div className="grid grid-cols-2 gap-2 sm:flex">
