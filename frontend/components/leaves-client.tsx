@@ -245,10 +245,14 @@ export function LeavesClient() {
                     {leave.start_date} - {leave.end_date} / 實際 {leave.days} 天 / 曆日 {leave.calendar_days} 天 / 扣除公眾假期 {leave.excluded_public_holidays} 天 / {statusLabels[leave.status] ?? leave.status}
                   </div>
                 </div>
-                {canManageRules ? (
+                {canManageRules && leave.status === "pending" ? (
                   <div className="grid grid-cols-2 gap-2 sm:flex">
                     <Button onClick={() => updateStatus(leave.id, "approved")}>批准</Button>
                     <Button variant="danger" onClick={() => updateStatus(leave.id, "rejected")}>拒絕</Button>
+                  </div>
+                ) : canManageRules ? (
+                  <div className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200">
+                    {statusLabels[leave.status] ?? leave.status}
                   </div>
                 ) : null}
               </div>

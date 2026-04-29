@@ -10,6 +10,14 @@ function money(amount: number) {
   return `HK$${amount.toFixed(2)}`;
 }
 
+function displayPayrollText(value?: string | null) {
+  const translations: Record<string, string> = {
+    "Production demo commission": "Production demo 佣金",
+    "Production demo late deduction": "Production demo 遲到扣款",
+  };
+  return value ? translations[value] ?? value : "";
+}
+
 function currentPayrollMonth() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -338,7 +346,7 @@ function PayrollDetailDrawer({ selectedPayroll, onClose }: { selectedPayroll: Pa
               {selectedPayroll.earnings_breakdown.map((item, index) => (
                 <div key={`${item.source}-${item.id ?? index}`} className="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
                   <div className="flex justify-between gap-3">
-                    <span className="font-semibold text-slate-800">{item.description}</span>
+                    <span className="font-semibold text-slate-800">{displayPayrollText(item.description)}</span>
                     <span className="font-semibold">{money(item.amount)}</span>
                   </div>
                   <div className="mt-2 text-sm text-slate-500">
@@ -359,7 +367,7 @@ function PayrollDetailDrawer({ selectedPayroll, onClose }: { selectedPayroll: Pa
                     <span className="font-semibold text-slate-800">{deductionTypeLabels[item.deduction_type] ?? item.deduction_type}</span>
                     <span className="font-semibold">{money(item.amount)}</span>
                   </div>
-                  <div className="mt-2 text-sm text-slate-500">{item.reason}</div>
+                  <div className="mt-2 text-sm text-slate-500">{displayPayrollText(item.reason)}</div>
                   <div className="mt-1 text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">{sourceLabels[item.source] ?? item.source}</div>
                 </div>
               ))}

@@ -8,6 +8,7 @@ import type { AuditLog } from "@/lib/types";
 
 const eventLabels: Record<string, string> = {
   employee_created: "新增員工",
+  employee_updated: "更新員工資料",
   employee_password_reset: "重設員工密碼",
   leave_config_updated: "更新請假設定",
   public_holiday_saved: "新增或更新公眾假期",
@@ -16,7 +17,11 @@ const eventLabels: Record<string, string> = {
   earning_created: "新增收入項目",
   deduction_created: "新增扣款項目",
   payroll_generated: "重算薪資",
+  payroll_viewed: "查看薪資資料",
   final_pay_created: "建立離職結算",
+  sensitive_employee_viewed: "查看員工敏感資料",
+  report_downloaded: "下載報表",
+  payslip_downloaded: "下載薪資單",
 };
 
 const roleLabels: Record<string, string> = {

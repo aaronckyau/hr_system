@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { Dispatch, FormEvent, SetStateAction, useEffect, useState } from "react";
 
-import { Alert, Button, Card, EmptyState, PageHeader, StatCard } from "@/components/ui";
+import { Alert, Button, Card, EmptyState, PageHeader, SlideOver, StatCard } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import type { Employee, ResetEmployeePasswordResult, SettingOption, User } from "@/lib/types";
 
@@ -44,6 +44,23 @@ const initialForm = {
   bank_account_no: "",
 };
 
+const initialEditForm = {
+  manager_user_id: "",
+  department: "",
+  job_title: "",
+  employment_end_date: "",
+  employment_type: "",
+  employment_status: "active",
+  work_location: "",
+  phone: "",
+  address: "",
+  annual_leave_balance: 0,
+  base_salary: 0,
+  allowances: 0,
+  bank_name: "",
+  bank_account_no: "",
+};
+
 function optionsByCategory(options: SettingOption[], category: string) {
   return options.filter((option) => option.category === category && option.is_active);
 }
@@ -78,6 +95,8 @@ export function EmployeesClient() {
   const [error, setError] = useState("");
   const [resetEmployeeId, setResetEmployeeId] = useState("");
   const [resetResult, setResetResult] = useState<ResetEmployeePasswordResult | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [editForm, setEditForm] = useState(initialEditForm);
 
   async function loadData() {
     const [employeeData, settingData, meData] = await Promise.all([
@@ -146,6 +165,49 @@ export function EmployeesClient() {
       setResetResult(result);
     } catch (submissionError) {
       setError(submissionError instanceof Error ? submissionError.message : "重設密碼失敗");
+    }
+  }
+
+  function openEmployeeEditor(employee: Employee) {
+    setSelectedEmployee(employee);
+    setEditForm({
+      manager_user_id: employee.manager_user_id ? String(employee.manager_user_id) : "",
+      department: employee.department || "",
+      job_title: employee.job_title || "",
+      employment_end_date: employee.employment_end_date || "",
+      employment_type: employee.employment_type || "",
+      employment_status: employee.employment_status || "active",
+      work_location: employee.work_location || "",
+      phone: employee.phone || "",
+      address: employee.address || "",
+      annual_leave_balance: employee.annual_leave_balance,
+      base_salary: employee.base_salary,
+      allowances: employee.allowances,
+      bank_name: employee.bank_name || "",
+      bank_account_no: employee.bank_account_no || "",
+    });
+  }
+
+  async function handleUpdateEmployee(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedEmployee) return;
+    setError("");
+    try {
+      const updated = await apiFetch<Employee>(`/employees/${selectedEmployee.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          ...editForm,
+          manager_user_id: editForm.manager_user_id ? Number(editForm.manager_user_id) : null,
+          employment_end_date: editForm.employment_end_date || null,
+          annual_leave_balance: Number(editForm.annual_leave_balance),
+          base_salary: Number(editForm.base_salary),
+          allowances: Number(editForm.allowances),
+        }),
+      });
+      setSelectedEmployee(updated);
+      await loadData();
+    } catch (submissionError) {
+      setError(submissionError instanceof Error ? submissionError.message : "更新員工資料失敗");
     }
   }
 
@@ -284,6 +346,7 @@ export function EmployeesClient() {
                 <th>職位</th>
                 <th>主管</th>
                 <th>月薪</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -298,6 +361,9 @@ export function EmployeesClient() {
                     <td>{employee.job_title}</td>
                     <td>{manager?.full_name ?? "-"}</td>
                     <td>{money(employee.base_salary)}</td>
+                    <td>
+                      <Button variant="ghost" onClick={() => openEmployeeEditor(employee)} type="button">查看 / 編輯</Button>
+                    </td>
                   </tr>
                 );
               })}
@@ -322,13 +388,121 @@ export function EmployeesClient() {
                   <div>主管：{manager?.full_name ?? "-"}</div>
                   <div className="font-semibold text-brand">月薪：{money(employee.base_salary)}</div>
                 </div>
+                <Button className="mt-4 w-full" variant="ghost" onClick={() => openEmployeeEditor(employee)} type="button">查看 / 編輯</Button>
               </div>
             );
           })}
           {employees.length === 0 ? <EmptyState title="暫時沒有員工" description="新增員工後會在這裡顯示。" /> : null}
         </div>
       </Card>
+
+      <EmployeeEditorDrawer
+        employee={selectedEmployee}
+        editForm={editForm}
+        managerOptions={managerOptions}
+        settingOptions={settingOptions}
+        onChange={setEditForm}
+        onClose={() => setSelectedEmployee(null)}
+        onSubmit={handleUpdateEmployee}
+      />
     </div>
+  );
+}
+
+function EmployeeEditorDrawer({
+  employee,
+  editForm,
+  managerOptions,
+  settingOptions,
+  onChange,
+  onClose,
+  onSubmit,
+}: {
+  employee: Employee | null;
+  editForm: typeof initialEditForm;
+  managerOptions: Employee[];
+  settingOptions: SettingOption[];
+  onChange: Dispatch<SetStateAction<typeof initialEditForm>>;
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  function renderOptionSelect(key: keyof typeof initialEditForm, category: string, placeholder: string) {
+    return (
+      <select value={String(editForm[key])} onChange={(event) => onChange((current) => ({ ...current, [key]: event.target.value }))}>
+        <option value="">{placeholder}</option>
+        {optionsByCategory(settingOptions, category).map((option) => (
+          <option key={option.id} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  return (
+    <SlideOver
+      open={Boolean(employee)}
+      title={employee ? `${employee.full_name} 員工檔案` : "員工檔案"}
+      description={employee ? `${employee.employee_no} / ${employee.email}` : undefined}
+      onClose={onClose}
+      footer={
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Button className="w-full sm:w-auto" variant="ghost" onClick={onClose} type="button">關閉</Button>
+          <Button className="w-full sm:w-auto" form="employee-edit-form" type="submit">儲存更改</Button>
+        </div>
+      }
+    >
+      {employee ? (
+        <form id="employee-edit-form" className="space-y-5" onSubmit={onSubmit}>
+          <Card className="bg-slate-50/80 shadow-none">
+            <h3 className="text-lg font-semibold text-slate-950">基本資料</h3>
+            <div className="mt-4 grid gap-3 text-sm text-slate-600">
+              <div>登入電郵：{employee.email}</div>
+              <div>員工編號：{employee.employee_no}</div>
+              <div>HKID / 護照：{employee.hk_id}</div>
+            </div>
+          </Card>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="直屬主管">
+              <select value={editForm.manager_user_id} onChange={(event) => onChange((current) => ({ ...current, manager_user_id: event.target.value }))}>
+                <option value="">未指定</option>
+                {managerOptions.map((manager) => (
+                  <option key={manager.id} value={manager.user_id ?? ""}>{manager.full_name} ({manager.employee_no})</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="部門">{renderOptionSelect("department", "department", "請選擇部門")}</Field>
+            <Field label="職位">{renderOptionSelect("job_title", "position", "請選擇職位")}</Field>
+            <Field label="合約類型">{renderOptionSelect("employment_type", "employment_type", "請選擇合約類型")}</Field>
+            <Field label="員工狀態">{renderOptionSelect("employment_status", "employment_status", "請選擇員工狀態")}</Field>
+            <Field label="工作地點">{renderOptionSelect("work_location", "work_location", "請選擇工作地點")}</Field>
+            <Field label="離職日期">
+              <input type="date" value={editForm.employment_end_date} onChange={(event) => onChange((current) => ({ ...current, employment_end_date: event.target.value }))} />
+            </Field>
+            <Field label="電話">
+              <input value={editForm.phone} onChange={(event) => onChange((current) => ({ ...current, phone: event.target.value }))} />
+            </Field>
+            <Field label="年假餘額">
+              <input type="number" value={editForm.annual_leave_balance} onChange={(event) => onChange((current) => ({ ...current, annual_leave_balance: Number(event.target.value) }))} />
+            </Field>
+            <Field label="基本月薪">
+              <input type="number" value={editForm.base_salary} onChange={(event) => onChange((current) => ({ ...current, base_salary: Number(event.target.value) }))} />
+            </Field>
+            <Field label="津貼">
+              <input type="number" value={editForm.allowances} onChange={(event) => onChange((current) => ({ ...current, allowances: Number(event.target.value) }))} />
+            </Field>
+            <Field label="銀行">{renderOptionSelect("bank_name", "bank", "請選擇銀行")}</Field>
+            <Field label="銀行戶口">
+              <input value={editForm.bank_account_no} onChange={(event) => onChange((current) => ({ ...current, bank_account_no: event.target.value }))} />
+            </Field>
+          </div>
+          <Field label="地址">
+            <textarea value={editForm.address} onChange={(event) => onChange((current) => ({ ...current, address: event.target.value }))} />
+          </Field>
+        </form>
+      ) : null}
+    </SlideOver>
   );
 }
 

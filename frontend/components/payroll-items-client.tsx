@@ -24,6 +24,14 @@ function money(amount: number) {
   return `HK$${amount.toFixed(2)}`;
 }
 
+function displayPayrollText(value?: string | null) {
+  const translations: Record<string, string> = {
+    "Production demo commission": "Production demo 佣金",
+    "Production demo late deduction": "Production demo 遲到扣款",
+  };
+  return value ? translations[value] ?? value : "";
+}
+
 export function PayrollItemsClient() {
   const [activeTab, setActiveTab] = useState<ItemTab>("earnings");
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -130,10 +138,10 @@ export function PayrollItemsClient() {
       {pageError ? <Alert>{pageError}</Alert> : null}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="收入項目" value={earnings.length} tone="brand" />
-        <StatCard label="扣款項目" value={deductions.length} tone="warm" />
-        <StatCard label="收入合計" value={money(earnings.reduce((sum, item) => sum + item.amount, 0))} />
-        <StatCard label="扣款合計" value={money(deductions.reduce((sum, item) => sum + item.amount, 0))} tone="brand" />
+        <StatCard label="本月手動收入項目" value={earnings.length} helper={`月份：${earningForm.payroll_month}`} tone="brand" />
+        <StatCard label="本月手動扣款項目" value={deductions.length} helper={`月份：${deductionForm.payroll_month}`} tone="warm" />
+        <StatCard label="手動收入合計" value={money(earnings.reduce((sum, item) => sum + item.amount, 0))} helper="不包括基本月薪及固定津貼" />
+        <StatCard label="手動扣款合計" value={money(deductions.reduce((sum, item) => sum + item.amount, 0))} helper="不包括系統自動扣款" tone="brand" />
       </section>
 
       <Card className="p-3">
@@ -201,7 +209,7 @@ export function PayrollItemsClient() {
               title: employee?.full_name ?? `#${item.employee_id}`,
               amount: money(item.amount),
               meta: `${labelFor("earning_type", item.earning_type)} / ${item.is_taxable ? "應課稅" : "非應課稅"} / ${item.counts_for_mpf ? "納入 MPF" : "不納入 MPF"} / ${sourceLabels[item.source] ?? item.source}`,
-              note: item.description,
+              note: displayPayrollText(item.description),
             };
           })}
         />
@@ -244,7 +252,7 @@ export function PayrollItemsClient() {
               title: employee?.full_name ?? `#${item.employee_id}`,
               amount: money(item.amount),
               meta: `${item.deduction_type === "unpaid_leave" ? "無薪假" : labelFor("deduction_type", item.deduction_type)} / ${sourceLabels[item.source] ?? item.source}`,
-              note: item.reason,
+              note: displayPayrollText(item.reason),
             };
           })}
         />
@@ -287,7 +295,7 @@ function EmployeeSelect({ employees, value, onChange }: { employees: Employee[];
       <select value={value} onChange={(event) => onChange(event.target.value)}>
         <option value="">請選擇</option>
         {employees.map((employee) => (
-          <option key={employee.id} value={employee.id}>{employee.full_name}</option>
+          <option key={employee.id} value={employee.id}>{employee.full_name} ({employee.employee_no})</option>
         ))}
       </select>
     </Field>
