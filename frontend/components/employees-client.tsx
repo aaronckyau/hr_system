@@ -97,6 +97,7 @@ export function EmployeesClient() {
   const [resetResult, setResetResult] = useState<ResetEmployeePasswordResult | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [editForm, setEditForm] = useState(initialEditForm);
+  const [filters, setFilters] = useState({ keyword: "", department: "", status: "" });
 
   async function loadData() {
     const [employeeData, settingData, meData] = await Promise.all([
@@ -213,6 +214,17 @@ export function EmployeesClient() {
 
   const canResetPassword = currentUser?.role === "admin" || currentUser?.role === "hr";
   const managerOptions = employees.filter((employee) => employee.role === "manager" || employee.role === "admin" || employee.role === "hr");
+  const filteredEmployees = employees.filter((employee) => {
+    const keyword = filters.keyword.trim().toLowerCase();
+    const matchesKeyword =
+      !keyword ||
+      [employee.full_name, employee.employee_no, employee.email, employee.department, employee.job_title]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(keyword));
+    const matchesDepartment = !filters.department || employee.department === filters.department;
+    const matchesStatus = !filters.status || employee.employment_status === filters.status;
+    return matchesKeyword && matchesDepartment && matchesStatus;
+  });
 
   return (
     <div className="space-y-6">
@@ -334,7 +346,45 @@ export function EmployeesClient() {
       </Card>
 
       <Card>
-        <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">員工列表</h2>
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">員工列表</h2>
+            <p className="mt-1 text-sm text-slate-500">顯示 {filteredEmployees.length} / {employees.length} 名員工</p>
+          </div>
+          <Button
+            className="w-full md:w-auto"
+            variant="ghost"
+            onClick={() => setFilters({ keyword: "", department: "", status: "" })}
+            type="button"
+          >
+            清除篩選
+          </Button>
+        </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <Field label="搜尋員工">
+            <input
+              placeholder="姓名、員工編號、電郵、部門、職位"
+              value={filters.keyword}
+              onChange={(event) => setFilters((current) => ({ ...current, keyword: event.target.value }))}
+            />
+          </Field>
+          <Field label="部門">
+            <select value={filters.department} onChange={(event) => setFilters((current) => ({ ...current, department: event.target.value }))}>
+              <option value="">全部部門</option>
+              {optionsByCategory(settingOptions, "department").map((option) => (
+                <option key={option.id} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="狀態">
+            <select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>
+              <option value="">全部狀態</option>
+              {Object.entries(statusLabels).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
         <div className="mt-5 hidden overflow-x-auto lg:block">
           <table className="responsive-table min-w-full">
             <thead>
@@ -350,7 +400,7 @@ export function EmployeesClient() {
               </tr>
             </thead>
             <tbody>
-              {employees.map((employee) => {
+              {filteredEmployees.map((employee) => {
                 const manager = employees.find((item) => item.user_id === employee.manager_user_id);
                 return (
                   <tr key={employee.id}>
@@ -371,7 +421,7 @@ export function EmployeesClient() {
           </table>
         </div>
         <div className="mt-5 grid gap-3 lg:hidden">
-          {employees.map((employee) => {
+          {filteredEmployees.map((employee) => {
             const manager = employees.find((item) => item.user_id === employee.manager_user_id);
             return (
               <div key={employee.id} className="rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100">
@@ -392,7 +442,7 @@ export function EmployeesClient() {
               </div>
             );
           })}
-          {employees.length === 0 ? <EmptyState title="暫時沒有員工" description="新增員工後會在這裡顯示。" /> : null}
+          {filteredEmployees.length === 0 ? <EmptyState title="找不到員工" description="請調整搜尋字眼或篩選條件。" /> : null}
         </div>
       </Card>
 

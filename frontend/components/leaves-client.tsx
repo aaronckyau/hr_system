@@ -40,6 +40,7 @@ export function LeavesClient() {
   const [error, setError] = useState("");
   const [form, setForm] = useState({ employee_id: "", leave_type: "annual", start_date: "", end_date: "", is_half_day: false, reason: "" });
   const [holidayForm, setHolidayForm] = useState({ holiday_date: "", name: "", is_active: true });
+  const [filters, setFilters] = useState({ month: "", status: "", employee_id: "", leave_type: "" });
 
   const canManageRules = currentUser?.role === "admin" || currentUser?.role === "hr";
   const canCreateLeaveForOthers = currentUser?.role === "admin" || currentUser?.role === "hr";
@@ -64,6 +65,14 @@ export function LeavesClient() {
   function labelFor(value: string) {
     return settingOptions.find((option) => option.value === value)?.label ?? value;
   }
+
+  const filteredLeaves = leaves.filter((leave) => {
+    const matchesMonth = !filters.month || leave.start_date.startsWith(filters.month) || leave.end_date.startsWith(filters.month);
+    const matchesStatus = !filters.status || leave.status === filters.status;
+    const matchesEmployee = !filters.employee_id || leave.employee_id === Number(filters.employee_id);
+    const matchesLeaveType = !filters.leave_type || leave.leave_type === filters.leave_type;
+    return matchesMonth && matchesStatus && matchesEmployee && matchesLeaveType;
+  });
 
   useEffect(() => {
     loadData().catch((fetchError) => setError(fetchError instanceof Error ? fetchError.message : "無法載入請假資料"));
@@ -231,9 +240,51 @@ export function LeavesClient() {
       ) : null}
 
       <Card>
-        <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">請假記錄</h2>
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-[-0.035em] text-slate-950">請假記錄</h2>
+            <p className="mt-1 text-sm text-slate-500">顯示 {filteredLeaves.length} / {leaves.length} 筆請假記錄</p>
+          </div>
+          <Button
+            className="w-full md:w-auto"
+            variant="ghost"
+            onClick={() => setFilters({ month: "", status: "", employee_id: "", leave_type: "" })}
+            type="button"
+          >
+            清除篩選
+          </Button>
+        </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <Field label="月份">
+            <input type="month" value={filters.month} onChange={(event) => setFilters((current) => ({ ...current, month: event.target.value }))} />
+          </Field>
+          <Field label="狀態">
+            <select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>
+              <option value="">全部狀態</option>
+              {Object.entries(statusLabels).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="員工">
+            <select value={filters.employee_id} onChange={(event) => setFilters((current) => ({ ...current, employee_id: event.target.value }))}>
+              <option value="">全部員工</option>
+              {employees.map((employee) => (
+                <option key={employee.id} value={employee.id}>{employee.full_name} ({employee.employee_no})</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="假期類型">
+            <select value={filters.leave_type} onChange={(event) => setFilters((current) => ({ ...current, leave_type: event.target.value }))}>
+              <option value="">全部類型</option>
+              {settingOptions.map((option) => (
+                <option key={option.id} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
         <div className="mt-5 grid gap-3">
-          {leaves.map((leave) => (
+          {filteredLeaves.map((leave) => (
             <div key={leave.id} className="rounded-[1.25rem] bg-slate-50 p-4 ring-1 ring-slate-100">
               <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div>
@@ -258,7 +309,7 @@ export function LeavesClient() {
               </div>
             </div>
           ))}
-          {leaves.length === 0 ? <EmptyState title="暫時沒有請假記錄" description="提交請假後會在這裡顯示。" /> : null}
+          {filteredLeaves.length === 0 ? <EmptyState title="找不到請假記錄" description="請調整月份、狀態、員工或假期類型篩選。" /> : null}
         </div>
       </Card>
     </div>
