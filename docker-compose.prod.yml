@@ -25,6 +25,7 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-hr_user}:${POSTGRES_PASSWORD}@hr-db:5432/${POSTGRES_DB:-hr_system}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://www.4mstrategy.com,https://4mstrategy.com}
+      DEMO_MODE: ${DEMO_MODE:-false}
     ports:
       - "127.0.0.1:5301:8000"
     depends_on:
