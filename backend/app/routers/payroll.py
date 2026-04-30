@@ -35,6 +35,31 @@ from app.services.audit import write_audit_log
 router = APIRouter(prefix="/payroll", tags=["payroll"])
 
 
+EARNING_TYPE_LABELS = {
+    "commission": "佣金",
+    "bonus": "花紅",
+    "reimbursement": "報銷",
+    "other": "其他收入",
+}
+
+DEDUCTION_TYPE_LABELS = {
+    "unpaid_leave": "無薪假扣款",
+    "absence": "缺勤扣款",
+    "late": "遲到扣款",
+    "other": "其他扣款",
+}
+
+
+def earning_type_label(value) -> str:
+    raw = getattr(value, "value", value)
+    return EARNING_TYPE_LABELS.get(str(raw), str(raw))
+
+
+def deduction_type_label(value) -> str:
+    raw = getattr(value, "value", value)
+    return DEDUCTION_TYPE_LABELS.get(str(raw), str(raw))
+
+
 def current_hk_payroll_month() -> str:
     now = datetime.now(ZoneInfo("Asia/Hong_Kong"))
     return f"{now.year}-{now.month:02d}"
@@ -260,12 +285,12 @@ def create_earning(
         event_type=AuditEvent.earning_created,
         entity_type="earning_item",
         entity_id=item.id,
-        summary=f"新增收入項目：員工 #{payload.employee_id} / {payload.earning_type.value}",
+        summary=f"新增收入項目：員工 #{payload.employee_id} / {earning_type_label(payload.earning_type)}",
         metadata={
             "employee_id": payload.employee_id,
             "payroll_month": payload.payroll_month,
             "amount": payload.amount,
-            "earning_type": payload.earning_type.value,
+            "earning_type": earning_type_label(payload.earning_type),
         },
     )
     return earning_to_read(item)
@@ -319,12 +344,12 @@ def create_deduction(
         event_type=AuditEvent.deduction_created,
         entity_type="deduction_item",
         entity_id=item.id,
-        summary=f"新增扣款項目：員工 #{payload.employee_id} / {payload.deduction_type.value}",
+        summary=f"新增扣款項目：員工 #{payload.employee_id} / {deduction_type_label(payload.deduction_type)}",
         metadata={
             "employee_id": payload.employee_id,
             "payroll_month": payload.payroll_month,
             "amount": payload.amount,
-            "deduction_type": payload.deduction_type.value,
+            "deduction_type": deduction_type_label(payload.deduction_type),
         },
     )
     return deduction_to_read(item)

@@ -67,6 +67,8 @@ class AuditEvent(str, Enum):
     employee_created = "employee_created"
     employee_updated = "employee_updated"
     employee_password_reset = "employee_password_reset"
+    leave_created = "leave_created"
+    leave_status_updated = "leave_status_updated"
     leave_config_updated = "leave_config_updated"
     public_holiday_saved = "public_holiday_saved"
     setting_option_saved = "setting_option_saved"

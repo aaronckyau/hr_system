@@ -41,7 +41,7 @@ export default function LoginPage() {
                 簡單處理員工、請假與薪資
               </h1>
               <p className="mt-5 max-w-md text-sm leading-6 text-slate-600 md:text-base">
-                為 30 人以下香港公司設計，集中管理 HR 日常流程，減少 Excel、Email 與 WhatsApp 來回追蹤。
+                為 30 人以下香港公司設計，集中管理人事日常流程，減少試算表、電郵與即時通訊來回追蹤。
               </p>
             </div>
             <div className="mt-8 grid gap-3 sm:grid-cols-3 md:grid-cols-1 lg:grid-cols-3">
@@ -62,11 +62,11 @@ export default function LoginPage() {
             </div>
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">Email</label>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">電郵</label>
                 <input autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">Password</label>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">密碼</label>
                 <input autoComplete="current-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
               </div>
               {error ? <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700 ring-1 ring-red-100">{error}</div> : null}

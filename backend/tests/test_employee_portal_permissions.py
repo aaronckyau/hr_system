@@ -1,5 +1,5 @@
 import unittest
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine, select
@@ -9,6 +9,7 @@ from app.core.security import hash_password
 from app.db import get_session
 from app.main import app
 from app.models import Employee, LeaveRequest, LeaveStatus, LeaveType, PayrollRecord, User, UserRole
+from app.routers.leaves import today_hk
 
 
 class EmployeePortalPermissionsTestCase(unittest.TestCase):
@@ -171,6 +172,7 @@ class EmployeePortalPermissionsTestCase(unittest.TestCase):
 
     def test_employee_leave_application_is_bound_to_own_profile(self):
         headers = self.auth_headers()
+        leave_date = today_hk() + timedelta(days=7)
         with Session(self.engine) as session:
             own_employee = session.exec(select(Employee).where(Employee.employee_no == "E101")).first()
             other_employee = session.exec(select(Employee).where(Employee.employee_no == "E102")).first()
@@ -181,8 +183,8 @@ class EmployeePortalPermissionsTestCase(unittest.TestCase):
             json={
                 "employee_id": other_employee.id,
                 "leave_type": "annual",
-                "start_date": "2026-04-20",
-                "end_date": "2026-04-20",
+                "start_date": leave_date.isoformat(),
+                "end_date": leave_date.isoformat(),
                 "is_half_day": False,
                 "reason": "Self-service test",
             },

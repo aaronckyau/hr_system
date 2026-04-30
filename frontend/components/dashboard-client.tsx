@@ -103,7 +103,7 @@ export function DashboardClient() {
           <Card className="border-teal-100 bg-gradient-to-br from-white to-teal-50/60">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Manager Portal</div>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">主管工作區</div>
                 <h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em] text-slate-950">團隊、審批、日曆集中處理</h2>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
                   主管入口只顯示直屬團隊、待審批申請及團隊假期日曆，避免混入 HR 專用的員工檔案或薪資設定。
@@ -139,7 +139,7 @@ export function DashboardClient() {
           <Card className="border-teal-100 bg-gradient-to-br from-white to-teal-50/60">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Employee Portal</div>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">員工自助區</div>
                 <h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em] text-slate-950">個人資料與假期狀況</h2>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
                   員工可查看自己的假期餘額、請假紀錄及最近薪資，不會看到新增員工或公司設定等 HR 管理功能。

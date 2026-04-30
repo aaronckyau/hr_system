@@ -123,7 +123,7 @@ export function EmployeePortalClient() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Employee Portal" title="個人工作台" description="查看個人資料、假期餘額、請假紀錄與最新糧單。資料範圍由後端權限控制。" />
+      <PageHeader eyebrow="員工自助區" title="個人工作台" description="查看個人資料、假期餘額、請假紀錄與最新糧單。資料範圍由後端權限控制。" />
       {error ? <Alert>{error}</Alert> : null}
       {success ? <Alert tone="success">{success}</Alert> : null}
       <StatGrid className="xl:grid-cols-3">
@@ -248,12 +248,12 @@ export function ManagerDashboardClient({ view }: { view: "dashboard" | "team" | 
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Manager Portal" title={title} description="主管只會看到被指派為直屬主管的員工；HR/Admin 可看到全部。" />
+      <PageHeader eyebrow="主管工作區" title={title} description="主管只會看到被指派為直屬主管的員工；HR/Admin 可看到全部。" />
       {error ? <Alert>{error}</Alert> : null}
 
       {view === "dashboard" ? (
         <StatGrid className="xl:grid-cols-3">
-          <StatCard label="Team 人數" value={employees.length} tone="brand" />
+          <StatCard label="團隊人數" value={employees.length} tone="brand" />
           <StatCard label="待審批" value={pendingLeaves.length} tone="warm" />
           <StatCard label="可用功能" value="團隊 / 審批 / 日曆" />
         </StatGrid>

@@ -18,6 +18,23 @@ RESTRICTED_CATEGORY_VALUES: dict[SettingCategory, set[str]] = {
     SettingCategory.employment_status: {item.value for item in EmploymentStatus},
 }
 
+CATEGORY_LABELS = {
+    "department": "部門",
+    "position": "職位",
+    "work_location": "工作地點",
+    "employment_type": "合約類型",
+    "employment_status": "員工狀態",
+    "bank": "銀行",
+    "leave_type": "假期類型",
+    "earning_type": "收入項目類型",
+    "deduction_type": "扣款項目類型",
+}
+
+
+def category_label(value) -> str:
+    raw = getattr(value, "value", value)
+    return CATEGORY_LABELS.get(str(raw), str(raw))
+
 
 def to_setting_option_read(option: SettingOption) -> SettingOptionRead:
     return SettingOptionRead(
@@ -74,10 +91,10 @@ def save_setting_option(
         event_type=AuditEvent.setting_option_saved,
         entity_type="setting_option",
         entity_id=option.id,
-        summary=f"儲存公司設定：{option.category.value} / {option.label}",
+        summary=f"儲存公司設定：{category_label(option.category)} / {option.label}",
         metadata={
-            "category": option.category.value,
-            "value": option.value,
+            "category": category_label(option.category),
+            "value": option.label,
             "is_active": option.is_active,
         },
     )

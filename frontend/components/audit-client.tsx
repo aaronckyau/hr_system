@@ -10,6 +10,8 @@ const eventLabels: Record<string, string> = {
   employee_created: "新增員工",
   employee_updated: "更新員工資料",
   employee_password_reset: "重設員工密碼",
+  leave_created: "提交請假申請",
+  leave_status_updated: "更新請假狀態",
   leave_config_updated: "更新請假設定",
   public_holiday_saved: "新增或更新公眾假期",
   setting_option_saved: "儲存公司設定",
@@ -40,6 +42,7 @@ const entityLabels: Record<string, string> = {
   final_pay: "離職結算",
   report: "報表",
   payslip: "薪資單",
+  leave: "請假申請",
   setting_option: "公司設定",
   public_holiday: "公眾假期",
   leave_config: "請假設定",
@@ -66,7 +69,61 @@ const metadataLabels: Record<string, string> = {
   value: "值",
   label: "名稱",
   format: "格式",
+  leave_type: "假期類型",
+  start_date: "開始日期",
+  end_date: "結束日期",
+  days: "日數",
+  status: "狀態",
+  previous_status: "原本狀態",
 };
+
+const valueLabels: Record<string, string> = {
+  admin: "管理員",
+  hr: "人事",
+  manager: "主管",
+  employee: "員工",
+  active: "在職",
+  probation: "試用中",
+  terminated: "離職",
+  suspended: "停職",
+  annual: "年假",
+  sick: "病假",
+  unpaid: "無薪假",
+  other: "其他",
+  pending: "待批",
+  approved: "已批准",
+  rejected: "已拒絕",
+  commission: "佣金",
+  bonus: "花紅",
+  reimbursement: "報銷",
+  unpaid_leave: "無薪假扣款",
+  absence: "缺勤",
+  late: "遲到",
+  department: "部門",
+  position: "職位",
+  work_location: "工作地點",
+  employment_type: "合約類型",
+  employment_status: "員工狀態",
+  leave_type: "假期類型",
+  earning_type: "收入項目類型",
+  deduction_type: "扣款項目類型",
+  csv: "CSV",
+  xlsx: "Excel",
+};
+
+function formatValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.map(formatValue).join("、");
+  }
+  if (typeof value === "boolean") {
+    return value ? "是" : "否";
+  }
+  if (value === null || value === undefined || value === "") {
+    return "-";
+  }
+  const raw = String(value);
+  return valueLabels[raw] ?? raw;
+}
 
 function formatEntity(log: AuditLog) {
   const entity = entityLabels[log.entity_type] ?? log.entity_type;
@@ -79,7 +136,7 @@ function formatMetadata(metadata: Record<string, unknown>) {
   return entries
     .map(([key, value]) => {
       const label = metadataLabels[key] ?? key;
-      const displayValue = Array.isArray(value) ? value.join("、") : String(value);
+      const displayValue = formatValue(value);
       return `${label}：${displayValue}`;
     })
     .join(" / ");

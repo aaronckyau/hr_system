@@ -1,4 +1,5 @@
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
@@ -13,6 +14,33 @@ from app.services.leave import calculate_leave_summary, get_leave_config
 
 
 router = APIRouter(prefix="/leaves", tags=["leaves"])
+
+LEAVE_TYPE_LABELS = {
+    "annual": "年假",
+    "sick": "病假",
+    "unpaid": "無薪假",
+    "other": "其他假期",
+}
+
+LEAVE_STATUS_LABELS = {
+    "pending": "待批",
+    "approved": "已批准",
+    "rejected": "已拒絕",
+}
+
+
+def today_hk() -> date:
+    return datetime.now(ZoneInfo("Asia/Hong_Kong")).date()
+
+
+def leave_type_label(value) -> str:
+    raw = getattr(value, "value", value)
+    return LEAVE_TYPE_LABELS.get(str(raw), str(raw))
+
+
+def leave_status_label(value) -> str:
+    raw = getattr(value, "value", value)
+    return LEAVE_STATUS_LABELS.get(str(raw), str(raw))
 
 
 def to_leave_read(leave: LeaveRequest, employee: Employee, user: User) -> LeaveRead:
@@ -156,6 +184,9 @@ def create_leave(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
+    if payload.start_date < today_hk():
+        raise HTTPException(status_code=400, detail="不允許提交過去日期的請假申請")
+
     employee_id = payload.employee_id
     if current_user.role == UserRole.employee:
         if not current_user.employee_profile:
@@ -198,6 +229,23 @@ def create_leave(
     session.commit()
     session.refresh(leave)
     user = session.get(User, employee.user_id)
+    write_audit_log(
+        session,
+        actor=current_user,
+        event_type=AuditEvent.leave_created,
+        entity_type="leave",
+        entity_id=leave.id,
+        summary=f"提交請假申請：{user.full_name} / {leave_type_label(leave.leave_type)} / {leave.start_date} 至 {leave.end_date}",
+        metadata={
+            "employee_id": employee.id,
+            "employee_no": employee.employee_no,
+            "leave_type": leave_type_label(leave.leave_type),
+            "start_date": leave.start_date.isoformat(),
+            "end_date": leave.end_date.isoformat(),
+            "days": leave.days,
+            "status": leave_status_label(leave.status),
+        },
+    )
     return to_leave_read(leave, employee, user)
 
 
@@ -216,6 +264,7 @@ def approve_leave(
         raise HTTPException(status_code=404, detail="找不到員工")
     if current_user.role == UserRole.manager and employee.manager_user_id != current_user.id:
         raise HTTPException(status_code=403, detail="權限不足")
+    previous_status = leave.status
     leave.status = payload.status
     leave.approver_user_id = current_user.id
     session.add(leave)
@@ -225,4 +274,22 @@ def approve_leave(
     user = session.get(User, employee.user_id) if employee else None
     if not employee or not user:
         raise HTTPException(status_code=404, detail="找不到員工")
+    write_audit_log(
+        session,
+        actor=current_user,
+        event_type=AuditEvent.leave_status_updated,
+        entity_type="leave",
+        entity_id=leave.id,
+        summary=f"更新請假狀態：{user.full_name} / {leave_type_label(leave.leave_type)} / {leave_status_label(previous_status)} → {leave_status_label(leave.status)}",
+        metadata={
+            "employee_id": employee.id,
+            "employee_no": employee.employee_no,
+            "leave_type": leave_type_label(leave.leave_type),
+            "start_date": leave.start_date.isoformat(),
+            "end_date": leave.end_date.isoformat(),
+            "days": leave.days,
+            "previous_status": leave_status_label(previous_status),
+            "status": leave_status_label(leave.status),
+        },
+    )
     return to_leave_read(leave, employee, user)
