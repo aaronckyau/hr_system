@@ -9,6 +9,7 @@ from app.core.security import hash_password
 from app.db import create_db_and_tables, engine
 from app.models import PayrollConfig, User, UserRole
 from app.routers import audit, auth, employees, leaves, payroll, reports, settings
+from app.services.data_cleanup import ensure_postgres_audit_events, normalize_demo_data
 from app.services.leave import get_leave_config, seed_default_public_holidays
 from app.services.settings import seed_default_setting_options
 
@@ -17,6 +18,7 @@ from app.services.settings import seed_default_setting_options
 async def lifespan(_: FastAPI):
     create_db_and_tables()
     with Session(engine) as session:
+        ensure_postgres_audit_events(session)
         admin = session.exec(select(User).where(User.email == "admin@company.com")).first()
         if not admin:
             session.add(
@@ -44,6 +46,7 @@ async def lifespan(_: FastAPI):
         get_leave_config(session)
         seed_default_public_holidays(session)
         seed_default_setting_options(session)
+        normalize_demo_data(session)
     yield
 
 

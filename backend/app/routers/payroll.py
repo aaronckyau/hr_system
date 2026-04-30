@@ -485,7 +485,7 @@ def read_payroll_detail(
         employee_mpf_exempt_reason=components["employee_mpf_exempt_reason"],
         relevant_income_formula=f"{mpf_base:.2f} - {payroll.deductions:.2f} = {payroll.relevant_income:.2f}",
         employee_mpf_formula=(
-            f"Exempt: {components['employee_mpf_exempt_reason']}"
+            f"豁免：{components['employee_mpf_exempt_reason']}"
             if components["employee_mpf_exempt"]
             else f"{payroll.relevant_income:.2f} x {components['config'].mpf_rate:.2%} = {payroll.employee_mpf:.2f}"
         ),

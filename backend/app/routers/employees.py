@@ -19,9 +19,49 @@ from app.services.audit import write_audit_log
 
 router = APIRouter(prefix="/employees", tags=["employees"])
 
+VALUE_ALIASES = {
+    "department": {
+        "Human Resources": "HR",
+    },
+    "job_title": {
+        "HR Officer": "Officer",
+        "Finance Analyst": "Analyst",
+        "Operations Manager": "Manager",
+        "Operations Assistant": "Assistant",
+    },
+    "work_location": {
+        "Central Office": "Hong Kong Office",
+    },
+}
+
+REQUIRED_MASTER_DATA_FIELDS = {"department", "job_title", "employment_type", "employment_status"}
+
 
 def generate_initial_password() -> str:
     return secrets.token_urlsafe(9)
+
+
+def normalize_employee_master_value(field: str, value):
+    if value is None:
+        return value
+    if not isinstance(value, str):
+        return value
+    stripped = value.strip()
+    return VALUE_ALIASES.get(field, {}).get(stripped, stripped)
+
+
+def normalize_employee_payload_values(values: dict) -> dict:
+    normalized = values.copy()
+    for field in ("department", "job_title", "employment_type", "employment_status", "work_location", "bank_name"):
+        if field in normalized:
+            normalized[field] = normalize_employee_master_value(field, normalized[field])
+    return normalized
+
+
+def validate_required_master_data(values: dict) -> None:
+    for field in REQUIRED_MASTER_DATA_FIELDS:
+        if field in values and isinstance(values[field], str) and not values[field].strip():
+            raise HTTPException(status_code=400, detail="部門、職位、合約類型及員工狀態不可留空")
 
 
 def to_employee_read(employee: Employee, user: User, viewer: User | None = None) -> EmployeeRead:
@@ -85,6 +125,9 @@ def create_employee(
     session: Session = Depends(get_session),
     current_user: User = Depends(require_roles(UserRole.admin, UserRole.hr)),
 ):
+    values = normalize_employee_payload_values(payload.model_dump())
+    validate_required_master_data(values)
+
     if session.exec(select(User).where(User.email == payload.email)).first():
         raise HTTPException(status_code=400, detail="電郵已存在")
     if session.exec(select(Employee).where(Employee.employee_no == payload.employee_no)).first():
@@ -94,7 +137,7 @@ def create_employee(
         email=payload.email,
         full_name=payload.full_name,
         password_hash=hash_password(generate_initial_password()),
-        role=payload.role,
+        role=values["role"],
     )
     session.add(user)
     session.commit()
@@ -102,23 +145,23 @@ def create_employee(
 
     employee = Employee(
         user_id=user.id,
-        manager_user_id=payload.manager_user_id,
+        manager_user_id=values["manager_user_id"],
         employee_no=payload.employee_no,
         hk_id=payload.hk_id,
         tax_file_no=payload.tax_file_no,
-        department=payload.department,
-        job_title=payload.job_title,
+        department=values["department"],
+        job_title=values["job_title"],
         employment_start_date=payload.employment_start_date,
         employment_end_date=payload.employment_end_date,
-        employment_type=payload.employment_type,
-        employment_status=payload.employment_status,
-        work_location=payload.work_location,
+        employment_type=values["employment_type"],
+        employment_status=values["employment_status"],
+        work_location=values["work_location"],
         phone=payload.phone,
         address=payload.address,
         annual_leave_balance=payload.annual_leave_balance,
         base_salary=payload.base_salary,
         allowances=payload.allowances,
-        bank_name=payload.bank_name,
+        bank_name=values["bank_name"],
         bank_account_no=payload.bank_account_no,
     )
     session.add(employee)
@@ -151,7 +194,8 @@ def update_employee(
     if not employee:
         raise HTTPException(status_code=404, detail="找不到員工")
 
-    updates = payload.model_dump(exclude_unset=True)
+    updates = normalize_employee_payload_values(payload.model_dump(exclude_unset=True))
+    validate_required_master_data(updates)
     for key, value in updates.items():
         setattr(employee, key, value)
     session.add(employee)

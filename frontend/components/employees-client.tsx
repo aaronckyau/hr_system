@@ -65,9 +65,35 @@ function optionsByCategory(options: SettingOption[], category: string) {
   return options.filter((option) => option.category === category && option.is_active);
 }
 
+const settingValueAliases: Record<string, Record<string, string>> = {
+  department: {
+    "Human Resources": "HR",
+  },
+  position: {
+    "HR Officer": "Officer",
+    "Finance Analyst": "Analyst",
+    "Operations Manager": "Manager",
+    "Operations Assistant": "Assistant",
+  },
+  work_location: {
+    "Central Office": "Hong Kong Office",
+  },
+};
+
+function canonicalSettingValue(options: SettingOption[], category: string, value?: string | null) {
+  if (!value) return "";
+  const activeOptions = optionsByCategory(options, category);
+  if (activeOptions.some((option) => option.value === value)) return value;
+  const alias = settingValueAliases[category]?.[value];
+  if (alias && activeOptions.some((option) => option.value === alias)) return alias;
+  const labelMatch = activeOptions.find((option) => option.label === value);
+  return labelMatch?.value ?? value;
+}
+
 function optionLabel(options: SettingOption[], category: string, value?: string | null) {
   if (!value) return "";
-  return options.find((option) => option.category === category && option.value === value)?.label ?? fallbackDisplayLabels[value] ?? value;
+  const canonicalValue = canonicalSettingValue(options, category, value);
+  return options.find((option) => option.category === category && option.value === canonicalValue)?.label ?? fallbackDisplayLabels[value] ?? value;
 }
 
 const fallbackDisplayLabels: Record<string, string> = {
@@ -208,12 +234,12 @@ export function EmployeesClient() {
     setSelectedEmployee(employee);
     setEditForm({
       manager_user_id: employee.manager_user_id ? String(employee.manager_user_id) : "",
-      department: employee.department || "",
-      job_title: employee.job_title || "",
+      department: canonicalSettingValue(settingOptions, "department", employee.department),
+      job_title: canonicalSettingValue(settingOptions, "position", employee.job_title),
       employment_end_date: employee.employment_end_date || "",
-      employment_type: employee.employment_type || "",
-      employment_status: employee.employment_status || "active",
-      work_location: employee.work_location || "",
+      employment_type: canonicalSettingValue(settingOptions, "employment_type", employee.employment_type),
+      employment_status: canonicalSettingValue(settingOptions, "employment_status", employee.employment_status) || "active",
+      work_location: canonicalSettingValue(settingOptions, "work_location", employee.work_location),
       phone: employee.phone || "",
       address: employee.address || "",
       annual_leave_balance: employee.annual_leave_balance,
@@ -256,7 +282,7 @@ export function EmployeesClient() {
       [employee.full_name, employee.employee_no, employee.email, employee.department, employee.job_title]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(keyword));
-    const matchesDepartment = !filters.department || employee.department === filters.department;
+    const matchesDepartment = !filters.department || canonicalSettingValue(settingOptions, "department", employee.department) === filters.department;
     const matchesStatus = !filters.status || employee.employment_status === filters.status;
     return matchesKeyword && matchesDepartment && matchesStatus;
   });

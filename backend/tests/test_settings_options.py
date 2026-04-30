@@ -8,7 +8,8 @@ from sqlmodel.pool import StaticPool
 from app.core.security import hash_password
 from app.db import get_session
 from app.main import app
-from app.models import AuditEvent, AuditLog, Employee, SettingCategory, SettingOption, User, UserRole
+from app.models import AuditEvent, AuditLog, DeductionItem, DeductionType, EarningItem, EarningType, Employee, PayrollRecord, PayrollStatus, SettingCategory, SettingOption, User, UserRole
+from app.services.data_cleanup import normalize_demo_data
 from app.services.settings import seed_default_setting_options
 
 
@@ -185,6 +186,131 @@ class SettingsOptionsTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()["work_location"], "Hong Kong Office")
+
+    def test_employee_create_normalizes_legacy_master_values(self):
+        response = self.client.post(
+            "/api/employees",
+            headers=self.auth_headers("admin@example.com"),
+            json={
+                "email": "legacy.employee@example.com",
+                "full_name": "Legacy Employee",
+                "role": "employee",
+                "employee_no": "E905",
+                "hk_id": "A123456(7)",
+                "department": "Human Resources",
+                "job_title": "Operations Assistant",
+                "employment_start_date": "2026-04-01",
+                "employment_type": "full_time",
+                "employment_status": "active",
+                "work_location": "Central Office",
+                "annual_leave_balance": 14,
+                "base_salary": 20000,
+                "allowances": 0,
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["department"], "HR")
+        self.assertEqual(response.json()["job_title"], "Assistant")
+        self.assertEqual(response.json()["work_location"], "Hong Kong Office")
+
+    def test_employee_update_rejects_empty_master_values(self):
+        create_response = self.client.post(
+            "/api/employees",
+            headers=self.auth_headers("admin@example.com"),
+            json={
+                "email": "editable.employee@example.com",
+                "full_name": "Editable Employee",
+                "role": "employee",
+                "employee_no": "E906",
+                "hk_id": "A123456(7)",
+                "department": "HR",
+                "job_title": "Officer",
+                "employment_start_date": "2026-04-01",
+                "employment_type": "full_time",
+                "employment_status": "active",
+                "annual_leave_balance": 14,
+                "base_salary": 20000,
+                "allowances": 0,
+            },
+        )
+        self.assertEqual(create_response.status_code, 201)
+
+        update_response = self.client.patch(
+            f"/api/employees/{create_response.json()['id']}",
+            headers=self.auth_headers("admin@example.com"),
+            json={"job_title": ""},
+        )
+
+        self.assertEqual(update_response.status_code, 400)
+
+    def test_normalize_demo_data_cleans_legacy_values_and_future_drafts(self):
+        with Session(self.engine) as session:
+            user = User(
+                email="demo.cleanup@example.com",
+                full_name="Demo Cleanup",
+                password_hash=hash_password("password123"),
+                role=UserRole.employee,
+            )
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+            employee = Employee(
+                user_id=user.id,
+                employee_no="E907",
+                hk_id="A123456(7)",
+                department="Human Resources",
+                job_title="Operations Assistant",
+                employment_start_date=date(2026, 4, 1),
+                work_location="Central Office",
+                bank_name="Demo Bank",
+                base_salary=20000,
+            )
+            session.add(employee)
+            session.commit()
+            session.refresh(employee)
+            session.add(
+                PayrollRecord(
+                    employee_id=employee.id,
+                    payroll_month="2099-01",
+                    base_salary=20000,
+                    gross_income=20000,
+                    relevant_income=20000,
+                    employee_mpf=1000,
+                    employer_mpf=1000,
+                    net_salary=19000,
+                    status=PayrollStatus.draft,
+                )
+            )
+            session.add(
+                EarningItem(
+                    employee_id=employee.id,
+                    payroll_month="2026-04",
+                    earning_type=EarningType.commission,
+                    amount=500,
+                    description="Production demo commission",
+                )
+            )
+            session.add(
+                DeductionItem(
+                    employee_id=employee.id,
+                    payroll_month="2026-04",
+                    deduction_type=DeductionType.late,
+                    amount=100,
+                    reason="Production demo late deduction",
+                )
+            )
+            session.commit()
+
+            normalize_demo_data(session)
+            session.refresh(employee)
+            self.assertEqual(employee.department, "HR")
+            self.assertEqual(employee.job_title, "Assistant")
+            self.assertEqual(employee.work_location, "Hong Kong Office")
+            self.assertEqual(employee.bank_name, "匯豐")
+            self.assertIsNone(session.exec(select(PayrollRecord).where(PayrollRecord.payroll_month == "2099-01")).first())
+            self.assertEqual(session.exec(select(EarningItem)).first().description, "示範佣金")
+            self.assertEqual(session.exec(select(DeductionItem)).first().reason, "示範遲到扣款")
 
     def test_manager_sees_only_direct_reports_with_sensitive_fields_masked(self):
         with Session(self.engine) as session:
