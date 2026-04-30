@@ -5,11 +5,11 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine, select
 from sqlmodel.pool import StaticPool
 
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_password
 from app.db import get_session
 from app.main import app
 from app.models import AuditEvent, AuditLog, DeductionItem, DeductionType, EarningItem, EarningType, Employee, PayrollRecord, PayrollStatus, SettingCategory, SettingOption, User, UserRole
-from app.services.data_cleanup import normalize_demo_data
+from app.services.data_cleanup import DEMO_PASSWORD, seed_demo_users, normalize_demo_data
 from app.services.settings import seed_default_setting_options
 
 
@@ -311,6 +311,38 @@ class SettingsOptionsTestCase(unittest.TestCase):
             self.assertIsNone(session.exec(select(PayrollRecord).where(PayrollRecord.payroll_month == "2099-01")).first())
             self.assertEqual(session.exec(select(EarningItem)).first().description, "示範佣金")
             self.assertEqual(session.exec(select(DeductionItem)).first().reason, "示範遲到扣款")
+
+    def test_seed_demo_users_creates_all_roles_with_testing_password(self):
+        with Session(self.engine) as session:
+            seed_demo_users(session)
+
+            demo_users = {
+                user.email: user
+                for user in session.exec(
+                    select(User).where(
+                        User.email.in_(
+                            [
+                                "demo.admin@company.com",
+                                "demo.hr@company.com",
+                                "demo.manager@company.com",
+                                "demo.employee@company.com",
+                            ]
+                        )
+                    )
+                ).all()
+            }
+            self.assertEqual(demo_users["demo.admin@company.com"].role, UserRole.admin)
+            self.assertEqual(demo_users["demo.hr@company.com"].role, UserRole.hr)
+            self.assertEqual(demo_users["demo.manager@company.com"].role, UserRole.manager)
+            self.assertEqual(demo_users["demo.employee@company.com"].role, UserRole.employee)
+            for user in demo_users.values():
+                self.assertTrue(verify_password(DEMO_PASSWORD, user.password_hash))
+
+            manager = demo_users["demo.manager@company.com"]
+            employee = session.exec(select(Employee).where(Employee.employee_no == "DEMO-EMP")).first()
+            self.assertIsNotNone(employee)
+            self.assertEqual(employee.manager_user_id, manager.id)
+            self.assertEqual(DEMO_PASSWORD, "Demo@2026-HR!")
 
     def test_manager_sees_only_direct_reports_with_sensitive_fields_masked(self):
         with Session(self.engine) as session:

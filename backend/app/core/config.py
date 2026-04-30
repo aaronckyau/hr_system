@@ -16,3 +16,4 @@ CORS_ORIGINS = [
     ).split(",")
     if origin.strip()
 ]
+DEMO_MODE = os.getenv("DEMO_MODE", "false").strip().lower() == "true"

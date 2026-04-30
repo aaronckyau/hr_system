@@ -4,12 +4,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 
-from app.core.config import CORS_ORIGINS
+from app.core.config import CORS_ORIGINS, DEMO_MODE
 from app.core.security import hash_password
 from app.db import create_db_and_tables, engine
 from app.models import PayrollConfig, User, UserRole
 from app.routers import audit, auth, employees, leaves, payroll, reports, settings
-from app.services.data_cleanup import ensure_postgres_audit_events, normalize_demo_data
+from app.services.data_cleanup import ensure_postgres_audit_events, normalize_demo_data, seed_demo_users
 from app.services.leave import get_leave_config, seed_default_public_holidays
 from app.services.settings import seed_default_setting_options
 
@@ -46,6 +46,8 @@ async def lifespan(_: FastAPI):
         get_leave_config(session)
         seed_default_public_holidays(session)
         seed_default_setting_options(session)
+        if DEMO_MODE:
+            seed_demo_users(session)
         normalize_demo_data(session)
     yield
 
